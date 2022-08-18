@@ -1,10 +1,4 @@
-#include <filesystem>
-#include <iostream>
-#include <stdio.h>
-#include <stdint.h>
-#include <string_view>
 #include <io_core.h>
-#include <io_archive.h>
 #include <diva_db.h>
 
 const char* SprDbFilename = "C:\\Eduardo\\Programas\\Steam\\steamapps\\common\\Hatsune Miku Project DIVA Mega Mix Plus\\mods\\Pop Culture\\rom\\2d\\mod_spr_db.bin";

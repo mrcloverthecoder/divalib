@@ -21,7 +21,7 @@
     <ClInclude Include="src\io_core.h">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="src\io_archive.h">
+    <ClInclude Include="src\diva_archive.h">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
     <ClInclude Include="src\util_string.h">
@@ -38,7 +38,7 @@
     <ClCompile Include="src\io_core.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="src\io_archive.cpp">
+    <ClCompile Include="src\diva_archive.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
     <ClCompile Include="src\util_string.cpp">
