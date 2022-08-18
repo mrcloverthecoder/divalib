@@ -16,3 +16,37 @@ int32_t Util::String::GetLastIndex(std::string_view str, char seek)
 
 	return index;
 }
+
+bool Util::String::StartsWith(std::string_view str, std::string_view compare)
+{
+	const char* orgPtr = str.data();
+	const char* cmpPtr = compare.data();
+
+	while (*orgPtr && *cmpPtr)
+	{
+		if (*orgPtr != *cmpPtr)
+			return false;
+
+		orgPtr++;
+		cmpPtr++;
+	}
+
+	return true;
+}
+
+bool Util::String::EndsWith(std::string_view str, std::string_view compare)
+{
+	const char* orgPtr = &str.back();
+	const char* cmpPtr = &compare.back();
+
+	while (0 < orgPtr - str.data() && 0 < cmpPtr - compare.data())
+	{
+		if (*orgPtr != *cmpPtr)
+			return false;
+
+		orgPtr--;
+		cmpPtr--;
+	}
+
+	return true;
+}
