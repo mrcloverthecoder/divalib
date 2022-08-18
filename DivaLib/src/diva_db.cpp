@@ -33,3 +33,29 @@ void SpriteDatabase::Parse(IO::Stream& stream)
 		info.SetId = stream.ReadInt32();
 	}
 }
+
+const SpriteDataInfo* SpriteDatabase::FindSpriteById(uint32_t id) const
+{
+	for (const SpriteDataInfo& info : Data)
+		if (info.Id == id && !info.IsTexture())
+			return &info;
+
+	return nullptr;
+}
+
+const SpriteDataInfo* SpriteDatabase::FindTextureById(uint32_t id) const
+{
+	for (const SpriteDataInfo& info : Data)
+		if (info.Id == id && info.IsTexture())
+			return &info;
+
+	return nullptr;
+}
+
+const SpriteSetInfo* SpriteDatabase::GetSpriteSetByIndex(int32_t index) const
+{
+	if (index > -1 && index < Sets.size())
+		return &Sets.at(index);
+
+	return nullptr;
+}

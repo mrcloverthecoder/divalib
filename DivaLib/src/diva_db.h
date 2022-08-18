@@ -36,5 +36,9 @@ namespace Database
 		std::vector<SpriteDataInfo> Data;
 
 		void Parse(IO::Stream& stream);
+
+		const SpriteDataInfo* FindSpriteById(uint32_t id) const;
+		const SpriteDataInfo* FindTextureById(uint32_t id) const;
+		const SpriteSetInfo* GetSpriteSetByIndex(int32_t index) const;
 	};
 }
