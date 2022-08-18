@@ -40,6 +40,7 @@ std::string IO::Path::GetFilename(std::string_view path)
 }
 
 // Stream
+// TODO: Use template for integer reading functions?
 int32_t IO::Stream::ReadInt32()
 {
 	int32_t value = 0;
@@ -47,6 +48,17 @@ int32_t IO::Stream::ReadInt32()
 
 	if (Endianness == EndiannessMode::Big)
 		return Endian::Swap(value);
+
+	return value;
+}
+
+uint32_t IO::Stream::ReadUInt32()
+{
+	uint32_t value = 0;
+	Read(&value, sizeof(uint32_t));
+
+	if (Endianness == EndiannessMode::Big)
+		return (uint32_t)Endian::Swap(value);
 
 	return value;
 }
@@ -74,6 +86,31 @@ void IO::Stream::ReadNullString(char* buffer, size_t bufferSize)
 	}
 }
 
+// It is more optimized to push data directly into
+// the destination string instead of returning one
+// (latter case would lead to unnecessary copying)
+void IO::Stream::ReadNullString(std::string& str)
+{
+	char current = 0x7F;
+	do
+	{
+		Read(&current, sizeof(char));
+		str += current;
+	} while (current != '\0');
+}
+
+void IO::Stream::ReadNullStringOffset(std::string& str)
+{
+	// Read offset value and get read head position
+	uint32_t offset = ReadUInt32();
+	uint32_t curPos = Tell();
+	// Seek to the string's offset and read the string
+	SeekBegin(offset);
+	ReadNullString(str);
+	// Seek back to read head position
+	SeekBegin(curPos);
+}
+
 bool IO::Stream::Align(size_t alignment, char padding)
 {
 	while (Tell() % alignment != 0)
@@ -87,21 +124,11 @@ bool IO::Stream::WriteNull(size_t count)
 	if (count < 1)
 		return false;
 
-#ifdef NULL_FAST_IMPL
-	// Hack
-	uint8_t* buffer = new uint8_t[count];
-	if (!buffer)
-		return false;
-
-	bool status = Write(buffer, count);
-	delete[] buffer;
-#else
 	int null = 0;
-
 	for (size_t i = 0; i < count; i++)
 		if (!Write(&null, 1))
 			return false;
-#endif
+
 	return true;
 }
 

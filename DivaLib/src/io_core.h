@@ -41,7 +41,10 @@ namespace IO
 		virtual bool Write(const void* buffer, size_t size) = 0;
 
 		int32_t ReadInt32();
+		uint32_t ReadUInt32();
 		void ReadNullString(char* buffer, size_t bufferSize);
+		void ReadNullString(std::string& str);
+		void ReadNullStringOffset(std::string& str);
 
 		bool Align(size_t alignment, char padding = '\0');
 		bool WriteNull(size_t count);
@@ -57,6 +60,8 @@ namespace IO
 		virtual void SeekBegin(uint32_t offset) = 0;
 	protected:
 		EndiannessMode Endianness = EndiannessMode::Little;
+
+		Stream() { }
 	};
 
 	class File : public Stream
