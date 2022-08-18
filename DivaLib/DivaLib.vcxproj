@@ -152,12 +152,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\diva_db.h" />
     <ClInclude Include="src\io_archive.h" />
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\io_core.h" />
     <ClInclude Include="src\util_string.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\diva_db.cpp" />
     <ClCompile Include="src\io_core.cpp" />
     <ClCompile Include="src\io_archive.cpp" />
     <ClCompile Include="src\pch.cpp">

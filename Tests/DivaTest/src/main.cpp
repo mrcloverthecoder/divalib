@@ -5,39 +5,28 @@
 #include <string_view>
 #include <io_core.h>
 #include <io_archive.h>
+#include <diva_db.h>
 
+const char* SprDbFilename = "C:\\Eduardo\\Programas\\Steam\\steamapps\\common\\Hatsune Miku Project DIVA Mega Mix Plus\\mods\\Pop Culture\\rom\\2d\\mod_spr_db.bin";
 const char* OutputFilename = "C:\\Development\\test.farc";
 std::string data = "this is a very long and also huge string to prevent small string optimization";
 
 int main(int argc, char** argv)
 {
-    if (argc < 2)
-        return -1;
-    
-    std::string path = std::string(argv[1]);
-    std::vector<std::string> files;
+    IO::File f = IO::File::Open(SprDbFilename, IO::StreamMode::Read);
+    Database::SpriteDatabase spr;
+    spr.Parse(f);
+    f.Close();
 
-    for (const auto& entry : std::filesystem::directory_iterator(path))
+    int idx = 0;
+    for (const Database::SpriteSetInfo& info : spr.Sets)
     {
-        if (!entry.is_regular_file())
-            continue;
-
-        std::string path = entry.path().string();
-        files.push_back(path);
+        printf("Sprite set #%d:\n", idx++);
+        printf("\tId: %u\n", info.Id);
+        printf("\tName: %s\n", info.Name.c_str());
+        printf("\tFile: %s\n", info.Filename.c_str());
+        printf("\tIndex: %d\n", info.Index);
     }
 
-    Archive::FArcPacker packer;
-    
-    for (const std::string& path : files)
-    {
-        packer.AddFile({
-            IO::Path::GetFilename(path),
-            data.size(),
-            data.data()
-        });
-    }
-
-    packer.Flush(OutputFilename, false);
-    
     return 0;
 }
