@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <functional>
 #include <string_view>
 
 namespace IO
@@ -40,11 +41,18 @@ namespace IO
 		virtual bool Read(void* buffer, size_t size) = 0;
 		virtual bool Write(const void* buffer, size_t size) = 0;
 
+		float ReadFloat32();
+		uint8_t ReadUInt8();
+		uint16_t ReadUInt16();
 		int32_t ReadInt32();
 		uint32_t ReadUInt32();
 		void ReadNullString(char* buffer, size_t bufferSize);
 		void ReadNullString(std::string& str);
 		void ReadNullStringOffset(std::string& str);
+		// Reads offset (uint32_t) and calls ExecuteAtOffset(offset, task)
+		void ExecuteOffset(std::function<void(void)> task);
+		// Execute task at offset
+		void ExecuteAtOffset(uint32_t offset, std::function<void(void)> task);
 
 		bool Align(size_t alignment, char padding = '\0');
 		bool WriteNull(size_t count);
@@ -58,6 +66,7 @@ namespace IO
 		virtual bool Close() = 0;
 		virtual uint32_t Tell() = 0;
 		virtual void SeekBegin(uint32_t offset) = 0;
+		virtual void SeekCurrent(uint32_t offset) = 0;
 	protected:
 		EndiannessMode Endianness = EndiannessMode::Little;
 
@@ -92,6 +101,7 @@ namespace IO
 		uint32_t Tell() override;
 		// Set position of read head
 		void SeekBegin(uint32_t offset) override;
+		void SeekCurrent(uint32_t offset) override;
 	private:
 		FILE* mDiskHandle;
 	};

@@ -39,8 +39,32 @@ std::string IO::Path::GetFilename(std::string_view path)
 	return filename;
 }
 
+
+
 // Stream
+float IO::Stream::ReadFloat32()
+{
+	float value = 0;
+	Read(&value, sizeof(float));
+
+	return value;
+}
+
 // TODO: Use template for integer reading functions?
+uint8_t IO::Stream::ReadUInt8()
+{
+	uint8_t value = 0;
+	Read(&value, sizeof(uint8_t));
+	return value;
+}
+
+uint16_t IO::Stream::ReadUInt16()
+{
+	uint16_t value = 0;
+	Read(&value, sizeof(uint16_t));
+	return value;
+}
+
 int32_t IO::Stream::ReadInt32()
 {
 	int32_t value = 0;
@@ -109,6 +133,29 @@ void IO::Stream::ReadNullStringOffset(std::string& str)
 	ReadNullString(str);
 	// Seek back to read head position
 	SeekBegin(curPos);
+}
+
+void IO::Stream::ExecuteOffset(std::function<void(void)> task)
+{
+	uint32_t offset = ReadUInt32();
+	// ExecuteAtOffset handles seeking back already
+	ExecuteAtOffset(offset, task);
+}
+
+void IO::Stream::ExecuteAtOffset(uint32_t offset, std::function<void(void)> task)
+{
+	if (offset == 0)
+		return;
+
+	// Get current position
+	uint32_t pos = Tell();
+
+	// Execute work at offset
+	SeekBegin(offset);
+	task();
+
+	// Seek back to current position;
+	SeekBegin(pos);
 }
 
 bool IO::Stream::Align(size_t alignment, char padding)
@@ -209,4 +256,10 @@ void IO::File::SeekBegin(uint32_t offset)
 {
 	if (mDiskHandle)
 		fseek(mDiskHandle, offset, SEEK_SET);
+}
+
+void IO::File::SeekCurrent(uint32_t offset)
+{
+	if (mDiskHandle)
+		fseek(mDiskHandle, offset, SEEK_CUR);
 }
