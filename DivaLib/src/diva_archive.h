@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "io_core.h"
+#include "core_io.h"
 
 namespace Archive
 {
@@ -32,14 +32,14 @@ namespace Archive
 	private:
 		struct FileEntry
 		{
-			char Name[0x100];
+			std::string Name;
 			int32_t Offset;
 			int32_t Size;
 			int32_t CompressedSize;
 		};
 
 		std::vector<FileEntry> mFiles;
-		IO::File mStream;
+		IO::Reader mStream;
 
 		// Archive flags
 		bool mIsCompressed; // FArC, FARC

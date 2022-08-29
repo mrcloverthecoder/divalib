@@ -1,26 +1,22 @@
-#include <io_core.h>
-#include <diva_db.h>
+#include <core_io.h>
+#include <diva_auth2d.h>
+#include <diva_archive.h>
 
-const char* SprDbFilename = "C:\\Eduardo\\Programas\\Steam\\steamapps\\common\\Hatsune Miku Project DIVA Mega Mix Plus\\mods\\Pop Culture\\rom\\2d\\mod_spr_db.bin";
-const char* OutputFilename = "C:\\Development\\test.farc";
-std::string data = "this is a very long and also huge string to prevent small string optimization";
+const char* AetFilename = "C:\\Development\\aet_gam_pv637.bin";
+const char FileData[1672 * 1024] = { 0xCC };
 
 int main(int argc, char** argv)
 {
-    IO::File f = IO::File::Open(SprDbFilename, IO::StreamMode::Read);
-    Database::SpriteDatabase spr;
-    spr.Parse(f);
-    f.Close();
+    IO::Reader reader;
+    reader.FromFile(AetFilename);
+    Aet::AetSet set = { };
+    set.Parse(reader);
 
-    int idx = 0;
-    for (const Database::SpriteSetInfo& info : spr.Sets)
-    {
-        printf("Sprite set #%d:\n", idx++);
-        printf("\tId: %u\n", info.Id);
-        printf("\tName: %s\n", info.Name.c_str());
-        printf("\tFile: %s\n", info.Filename.c_str());
-        printf("\tIndex: %d\n", info.Index);
-    }
+    Archive::FArcPacker packer = { };
+    Archive::FArcPacker::FArcFile file = { std::string("file.bin"), 1672 * 1024, &FileData[0] };
+    packer.AddFile(file);
+
+    packer.Flush("C:\\Development\\new_test.farc", false);
 
     return 0;
 }

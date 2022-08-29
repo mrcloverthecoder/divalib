@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "io_core.h"
+#include "core_io.h"
 
 namespace Database
 {
@@ -35,7 +35,7 @@ namespace Database
 		std::vector<SpriteSetInfo> Sets;
 		std::vector<SpriteDataInfo> Data;
 
-		void Parse(IO::Stream& stream);
+		void Parse(IO::Reader& reader);
 
 		const SpriteDataInfo* FindSpriteById(uint32_t id) const;
 		const SpriteDataInfo* FindTextureById(uint32_t id) const;

@@ -153,18 +153,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\core.h" />
+    <ClInclude Include="src\diva_archive.h" />
     <ClInclude Include="src\diva_auth2d.h" />
     <ClInclude Include="src\diva_db.h" />
-    <ClInclude Include="src\diva_archive.h" />
     <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\io_core.h" />
+    <ClInclude Include="src\core_io.h" />
     <ClInclude Include="src\util_string.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\diva_archive.cpp" />
     <ClCompile Include="src\diva_auth2d.cpp" />
     <ClCompile Include="src\diva_db.cpp" />
-    <ClCompile Include="src\io_core.cpp" />
-    <ClCompile Include="src\diva_archive.cpp" />
+    <ClCompile Include="src\core_io.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

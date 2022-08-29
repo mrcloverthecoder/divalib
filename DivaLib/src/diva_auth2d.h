@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "io_core.h"
+#include "core_io.h"
 
 namespace Aet
 {
@@ -191,6 +191,6 @@ namespace Aet
 	public:
 		std::vector<Scene> Scenes;
 
-		void Parse(IO::Stream& stream);
+		void Parse(IO::Reader& reader);
 	};
 }

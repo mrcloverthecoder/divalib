@@ -3,34 +3,34 @@
 
 using namespace Database;
 
-void SpriteDatabase::Parse(IO::Stream& stream)
+void SpriteDatabase::Parse(IO::Reader& reader)
 {
-	int32_t setCount = stream.ReadInt32();
-	int32_t setOffset = stream.ReadInt32();
-	int32_t dataCount = stream.ReadInt32(); // Sprite and textures
-	int32_t dataOffset = stream.ReadInt32();
+	int32_t setCount = reader.ReadInt32();
+	int32_t setOffset = reader.ReadInt32();
+	int32_t dataCount = reader.ReadInt32(); // Sprite and textures
+	int32_t dataOffset = reader.ReadInt32();
 
-	stream.SeekBegin(setOffset);
+	reader.SeekBegin(setOffset);
 	for (int i = 0; i < setCount; i++)
 	{
 		// Add a new entry
 		SpriteSetInfo& info = Sets.emplace_back();
 		// Read data
-		info.Id = stream.ReadUInt32();
-		stream.ReadNullStringOffset(info.Name);
-		stream.ReadNullStringOffset(info.Filename);
-		info.Index = stream.ReadInt32();
+		info.Id = reader.ReadUInt32();
+		info.Name = reader.ReadStringOffset();
+		info.Filename = reader.ReadStringOffset();
+		info.Index = reader.ReadInt32();
 	}
 
-	stream.SeekBegin(dataOffset);
+	reader.SeekBegin(dataOffset);
 	for (int i = 0; i < dataCount; i++)
 	{
 		// Add a new entry
 		SpriteDataInfo& info = Data.emplace_back();
 		// Read data
-		info.Id = stream.ReadUInt32();
-		stream.ReadNullStringOffset(info.Name);
-		info.SetId = stream.ReadInt32();
+		info.Id = reader.ReadUInt32();
+		info.Name = reader.ReadStringOffset();
+		info.SetId = reader.ReadInt32();
 	}
 }
 

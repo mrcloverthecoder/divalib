@@ -5,12 +5,8 @@ using namespace Archive;
 
 bool Archive::FArc::Open(std::string_view path)
 {
-	IO::File src = IO::File::Open(path, IO::StreamMode::Read);
-	if (!src.Valid())
-		return false;
-
-	src.SetEndian(IO::EndiannessMode::Big);
-	mStream = src;
+	mStream.FromFile(path);
+	mStream.SetEndianness(IO::Endianness::Big);
 	ReadHeader();
 
 	return true;
@@ -18,9 +14,6 @@ bool Archive::FArc::Open(std::string_view path)
 
 void Archive::FArc::Close()
 {
-	if (mStream.Valid())
-		mStream.Close();
-
 	mFiles.clear();
 }
 
@@ -30,7 +23,7 @@ Archive::FArc::FileData Archive::FArc::GetFile(std::string_view name)
 
 	for (const FileEntry& entry : mFiles)
 	{
-		if (strcmp(name.data(), entry.Name) != 0)
+		if (strcmp(name.data(), entry.Name.data()) != 0)
 			continue;
 
 		file.Size = entry.Size;
@@ -72,10 +65,10 @@ void Archive::FArc::ReadHeader()
 	}
 
 	// Read file entries
-	while (mStream.Tell() < (uint32_t)(headerSize + 8))
+	while (mStream.GetPosition() < (size_t)(headerSize + 8))
 	{
 		FileEntry entry = { };
-		mStream.ReadNullString(entry.Name, 0x100); // File name
+		entry.Name = mStream.ReadString(); // File name
 		entry.Offset = mStream.ReadInt32();
 		if (mIsCompressed)
 			entry.CompressedSize = mStream.ReadInt32();
@@ -101,42 +94,38 @@ bool FArcPacker::Flush(std::string_view path, bool compress)
 	if (path.empty())
 		return false;
 	
-	IO::File stream = IO::File::Open(path, IO::StreamMode::Write);
-	stream.SetEndian(IO::EndiannessMode::Big);
-
-	// Return early if file failed to open
-	if (!stream.Valid())
-		return false;
+	IO::Writer writer;
+	writer.SetEndianness(IO::Endianness::Big);
 
 	int32_t headerSize = GetHeaderSize(compress);
 	int32_t fileOffset = headerSize + 0x08;
 
-	stream.WriteInt32('FArc');
-	stream.WriteInt32(headerSize);
-	stream.WriteInt32(FArcAlignment);
+	writer.WriteInt32('FArc');
+	writer.WriteInt32(headerSize);
+	writer.WriteInt32(FArcAlignment);
 
 	// Write header
 	for (const FArcFile& file : mFiles)
 	{
-		stream.WriteNullString(file.Filename);
-		stream.WriteInt32(fileOffset);
-		stream.WriteInt32(file.Size);
+		writer.WriteString(file.Filename);
+		writer.WriteInt32(fileOffset);
+		writer.WriteInt32(file.Size);
 
 		fileOffset += file.Size;
 		fileOffset = IO::Util::Align(fileOffset, FArcAlignment);
 	}
 
 	// Alin header
-	stream.Align(FArcAlignment, 'x');
+	writer.Pad(FArcAlignment, 'x');
 
 	// Write file data
 	for (const FArcFile& file : mFiles)
 	{
-		stream.Write(file.Data, file.Size);
-		stream.Align(FArcAlignment, 'x');
+		writer.Write(file.Data, file.Size);
+		writer.Pad(FArcAlignment, 'x');
 	}
 
-	stream.Close();
+	writer.Flush(path);
 
 	return true;
 }
