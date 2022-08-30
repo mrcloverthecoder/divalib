@@ -16,12 +16,41 @@ namespace IO
 
 	namespace Endian
 	{
+		inline int16_t Swap(int16_t value)
+		{
+			return (value << 8 & 0xFF00) | (value >> 8 & 0xFF);
+		}
+
 		inline int32_t Swap(int32_t value)
 		{
 			return (value >> 24 & 0xFF) | ((value >> 16 & 0xFF) << 8) | ((value >> 8 & 0xFF) << 16) | ((value & 0xFF) << 24);
 		}
 
-		inline uint32_t Swap(uint32_t value) { (uint32_t)Swap((int32_t)value); }
+		// HACK!!!
+		inline uint16_t Swap(uint16_t value)
+		{
+			int16_t temp = Swap(*(int16_t*)&value);
+			return *(uint16_t*)&temp;
+		}
+
+		inline uint32_t Swap(uint32_t value)
+		{ 
+			int32_t temp = Swap(*(int32_t*)&value);
+			return *(uint32_t*)&temp;
+		}
+
+		inline float Swap(float value)
+		{
+			float temp = 0.0f;
+			char *src = (char*)&value, *dst = (char*)&temp;
+
+			dst[0] = src[3];
+			dst[1] = src[2];
+			dst[2] = src[1];
+			dst[3] = src[0];
+
+			return temp;
+		}
 	}
 
 	namespace Path
@@ -74,30 +103,19 @@ namespace IO
 		inline char ReadChar() { return Internal_ReadT<char>(); }
 		inline int8_t ReadInt8() { return Internal_ReadT<int8_t>(); }
 		inline uint8_t ReadUInt8() { return Internal_ReadT<uint8_t>(); }
-		inline int16_t ReadInt16() { return Internal_ReadT<int16_t>(); }
-		inline uint16_t ReadUInt16() { return Internal_ReadT<uint16_t>(); }
-		inline int32_t ReadInt32() { return Internal_ReadT<int32_t>(); }
-		inline uint32_t ReadUInt32() { return Internal_ReadT<uint32_t>(); }
-		inline float ReadFloat32() { return Internal_ReadT<float>(); }
+
+		inline int16_t ReadInt16() { return ShouldSwap() ? ReadI16_B() : Internal_ReadT<int16_t>(); }
+		inline uint16_t ReadUInt16() { return ShouldSwap() ? ReadU16_B() : Internal_ReadT<uint16_t>(); }
+		inline int32_t ReadInt32() { return ShouldSwap() ? ReadI32_B() : Internal_ReadT<int32_t>(); }
+		inline uint32_t ReadUInt32() { return ShouldSwap() ? ReadU32_B() : Internal_ReadT<uint32_t>(); }
+		inline float ReadFloat32() { return ShouldSwap() ? ReadF32_B() : Internal_ReadT<float>(); }
+
 		// Read null-terminated string
-		inline std::string ReadString()
-		{
-			std::string str;
-			char c = '\0';
-			do
-			{
-				c = ReadChar();
-				str += c;
-			} while (c != '\0');
-
-			return str;
-		}
-
+		std::string ReadString();
 		inline std::string ReadStringOffset()
 		{
 			std::string str;
-			uint32_t offset = ReadUInt32();
-			ExecuteAtOffset(offset, [&str, this] { str = ReadString(); });
+			ExecuteAtOffset(ReadUInt32(), [&str, this] { str = ReadString(); });
 			return str;
 		}
 
@@ -108,6 +126,15 @@ namespace IO
 		size_t mSize = 0;
 		size_t mPosition = 0;
 		Endianness mEndianness = Endianness::Little;
+
+		inline bool ShouldSwap() { return mEndianness == Endianness::Big; }
+
+		// Internal use only
+		inline int16_t ReadI16_B() { return Endian::Swap(Internal_ReadT<int16_t>()); }
+		inline uint16_t ReadU16_B() { return Endian::Swap(Internal_ReadT<uint16_t>()); }
+		inline int32_t ReadI32_B() { return Endian::Swap(Internal_ReadT<int32_t>()); }
+		inline uint32_t ReadU32_B() { return Endian::Swap(Internal_ReadT<uint32_t>()); }
+		inline float ReadF32_B() { return Endian::Swap(Internal_ReadT<float>()); }
 
 		// Basic types only
 		template <typename T>
@@ -135,11 +162,10 @@ namespace IO
 		inline void SetEndianness(Endianness endian) { mEndianness = endian; }
 
 		bool Write(const void* buffer, size_t size);
-		inline void WriteChar(char value) { Write(&value, sizeof(char)); }
-		// I know this is very hacky. I'm just really lazy, LOL
-		inline void WriteInt32(int32_t value) { ShouldSwap() ? Write32B(value) : Write32L(value); }
-		inline void WriteUInt32(uint32_t value) { WriteInt32(*(int32_t*)&value); }
-		inline void WriteFloat32(float value) { WriteInt32(*(int32_t*)&value); }
+		inline void WriteChar(char value) { Write(&value, 1); }
+		inline void WriteInt32(int32_t value) { ShouldSwap() ? WriteI32_B(value) : Write(&value, 4); }
+		inline void WriteUInt32(uint32_t value) { ShouldSwap() ? WriteU32_B(value) : Write(&value, 4); }
+		inline void WriteFloat32(float value) { ShouldSwap() ? WriteF32_B(value) : Write(&value, 4); }
 		inline void WriteString(std::string_view value)
 		{
 			for (const char& c : value)
@@ -161,8 +187,13 @@ namespace IO
 		const size_t mBufferSize = 256 * 1024; // 256kb
 
 		inline bool ShouldSwap() { return mEndianness == Endianness::Big; }
-		inline void Write32L(int32_t value) { Write(&value, sizeof(int32_t)); }
-		inline void Write32B(int32_t value) { int32_t v = Endian::Swap(value); Write(&v, sizeof(int32_t)); }
+
+		// Internal use only
+		inline bool WriteI16_B(int16_t value) { int16_t v = Endian::Swap(value); Write(&v, 2); return true; }
+		inline bool WriteU16_B(uint16_t value) { uint16_t v = Endian::Swap(value); Write(&v, 2); return true; }
+		inline bool WriteI32_B(int32_t value) { int32_t v = Endian::Swap(value); Write(&v, 4); return true; }
+		inline bool WriteU32_B(uint32_t value) { uint32_t v = Endian::Swap(value); Write(&v, 4); return true; }
+		inline bool WriteF32_B(float value) { float v = Endian::Swap(value); Write(&v, 4); return true; }
 
 		inline void ExpandBuffer()
 		{

@@ -102,6 +102,19 @@ bool IO::MemoryReader::Read(void* buffer, size_t size)
 	return true;
 }
 
+std::string IO::MemoryReader::ReadString()
+{
+	std::string str;
+	char c = '\0';
+	do
+	{
+		c = ReadChar();
+		str += c;
+	} while (c != '\0');
+
+	return str;
+}
+
 void IO::MemoryReader::ExecuteAtOffset(uint32_t offset, std::function<void(void)> task)
 {
 	if (offset == 0)
@@ -143,4 +156,6 @@ bool IO::MemoryWriter::Flush(std::string_view path)
 
 	fwrite(mContent.get(), mSize, 1, file);
 	fclose(file);
+
+	return true;
 }
