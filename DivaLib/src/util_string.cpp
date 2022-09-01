@@ -1,52 +1,24 @@
 #include "pch.h"
 #include "util_string.h"
 
+int32_t Util::String::GetIndex(std::string_view str, char seek)
+{
+	for (size_t i = 0; i < str.size(); i++)
+		if (str[i] == seek)
+			return i;
+
+	return -1;
+}
+
 int32_t Util::String::GetLastIndex(std::string_view str, char seek)
 {
-	int32_t index = -1;
-	const char* ptr = str.data();
+	if (str.empty())
+		return -1;
 
-	// Loop through string and try to find the char being seeked
-	while (*ptr)
-	{
-		if (*ptr == seek)
-			index = ptr - str.data();
-		ptr++;
-	}
+	int32_t index = -1;
+	for (size_t i = 0; i < str.size(); i++)
+		if (str[i] == seek)
+			index = static_cast<int32_t>(i);
 
 	return index;
-}
-
-bool Util::String::StartsWith(std::string_view str, std::string_view compare)
-{
-	const char* orgPtr = str.data();
-	const char* cmpPtr = compare.data();
-
-	while (*orgPtr && *cmpPtr)
-	{
-		if (*orgPtr != *cmpPtr)
-			return false;
-
-		orgPtr++;
-		cmpPtr++;
-	}
-
-	return true;
-}
-
-bool Util::String::EndsWith(std::string_view str, std::string_view compare)
-{
-	const char* orgPtr = &str.back();
-	const char* cmpPtr = &compare.back();
-
-	while (0 < orgPtr - str.data() && 0 < cmpPtr - compare.data())
-	{
-		if (*orgPtr != *cmpPtr)
-			return false;
-
-		orgPtr--;
-		cmpPtr--;
-	}
-
-	return true;
 }
