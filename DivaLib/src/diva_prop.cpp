@@ -24,15 +24,57 @@ void CanonicalProperties::Parse(const char* buffer, size_t size)
 	}
 }
 
-KeyValue* CanonicalProperties::FindByKey(std::string_view key)
+bool CanonicalProperties::OpenScope(std::string_view scope)
 {
-	size_t low = 0;
-	size_t high = mRanges.size() - 1; // Highest index
+	if (scope.empty())
+		return false;
 
+	if (mScope[0] != '\0')
+		strcat_s(mScope, 0x80, ".");
+	strncat_s(mScope, 0x80, scope.data(), scope.size());
+	mScopeStepStack.push_back(Util::String::Count(scope, '.') + 1);
+	return true;
+}
+
+bool CanonicalProperties::CloseScope()
+{
+	if (!mScope[0]) return false;
+
+	for (int32_t i = 0; i < mScopeStepStack.back(); i++)
+	{
+		int32_t index = Util::String::GetLastIndex(mScope, '.');
+		if (index < 0)
+		{
+			mScope[0] = '\0';
+			break;
+		}
+
+		mScope[index] = '\0';
+	}
+
+	mScopeStepStack.pop_back();
+	return true;
+}
+
+const KeyValue* CanonicalProperties::FindByKey(std::string_view key) const
+{
+	// NOTE: The algo will throw vector subscript error if
+	//       this is unsigned and the key does not exist
+	int32_t low = 0;
+	int32_t high = static_cast<int32_t>(mRanges.size() - 1); // Highest index
+
+	if (low > high)
+		return nullptr;
+
+	char keyData[0x80] = { 0x00 };
 	while (low <= high)
 	{
-		size_t mid = (low + high) / 2;
-		int result = strncmp(mRanges[mid].first.data(), key.data(), key.size());
+		int32_t mid = (low + high) / 2;
+		const auto& srcKey = mRanges[mid].first;
+
+		// HACK: This is just a placeholder fix. Should be changed later
+		strncpy_s(keyData, 0x80, srcKey.data(), srcKey.size());
+		int result = strncmp(keyData, key.data(), 0x80);
 
 		if (result == 0) return &mRanges[mid];
 		else if (result < 0) low = mid + 1;
@@ -42,12 +84,26 @@ KeyValue* CanonicalProperties::FindByKey(std::string_view key)
 	return nullptr;
 }
 
-KeyValue* CanonicalProperties::FindByKeyScoped(std::string_view key)
+const KeyValue* CanonicalProperties::FindByKeyScoped(std::string_view key) const
 {
-	return FindByKey(key);
+	if (key.size() < 1)
+		return nullptr;
+
+	char scopeKey[0x80] = { '\0' };
+	// NOTE: Copy scope string
+	if (mScope[0] != '\0')
+	{
+		strcpy_s(scopeKey, 0x80, mScope);
+		strcat_s(scopeKey, 0x80, ".");
+	}
+	// NOTE: Copy key string
+	strncat_s(scopeKey, 0x80, key.data(), key.size());
+
+	// NOTE: Try to find full key
+	return FindByKey(scopeKey);
 }
 
-bool CanonicalProperties::Read(std::string_view key, std::string& value)
+bool CanonicalProperties::Read(std::string_view key, std::string& value) const
 {
 	const auto* kv = FindByKeyScoped(key);
 	if (!kv) return false;
@@ -55,11 +111,19 @@ bool CanonicalProperties::Read(std::string_view key, std::string& value)
 	return true;
 }
 
-bool CanonicalProperties::Read(std::string_view key, int32_t& value, bool hex)
+bool CanonicalProperties::Read(std::string_view key, int32_t& value, bool hex) const
 {
 	std::string src;
 	if (!Read(key, src)) return false;
 	value = strtol(src.data(), nullptr, hex ? 16 : 10);
+	return true;
+}
+
+bool CanonicalProperties::Read(std::string_view key, float& value) const
+{
+	std::string src;
+	if (!Read(key, src)) return false;
+	value = strtof(src.data(), nullptr);
 	return true;
 }
 

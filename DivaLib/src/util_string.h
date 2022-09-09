@@ -9,5 +9,6 @@ namespace Util
 	{
 		int32_t GetIndex(std::string_view str, char seek);
 		int32_t GetLastIndex(std::string_view str, char seek);
+		int32_t Count(std::string_view str, char seek);
 	}
 }

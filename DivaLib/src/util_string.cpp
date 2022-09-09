@@ -22,3 +22,14 @@ int32_t Util::String::GetLastIndex(std::string_view str, char seek)
 
 	return index;
 }
+
+int32_t Util::String::Count(std::string_view str, char seek)
+{
+	int32_t count = 0;
+
+	for (const char& c : str)
+		if (c == seek)
+			count++;
+
+	return count;
+}

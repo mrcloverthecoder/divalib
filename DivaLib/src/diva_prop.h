@@ -13,12 +13,30 @@ namespace Property
 	class CanonicalProperties
 	{
 	public:
-		void Parse(const char* buffer, size_t size);
-		KeyValue* FindByKey(std::string_view key);
-		KeyValue* FindByKeyScoped(std::string_view key);
+		CanonicalProperties() = default;
+		~CanonicalProperties() = default;
 
-		bool Read(std::string_view key, std::string& value);
-		bool Read(std::string_view key, int32_t& value, bool hex = false);
+		void Parse(const char* buffer, size_t size);
+
+		bool OpenScope(std::string_view scope);
+		bool CloseScope();
+		const KeyValue* FindByKey(std::string_view key) const;
+		const KeyValue* FindByKeyScoped(std::string_view key) const;
+		bool Read(std::string_view key, std::string& value) const;
+		bool Read(std::string_view key, int32_t& value, bool hex = false) const;
+		bool Read(std::string_view key, float& value) const;
+
+		template <typename T>
+		inline bool ReadEnum(std::string_view key, T& value, const char* const* rep) const
+		{
+			std::string src;
+			if (!Read(key, src)) return false;
+
+			for (int32_t i = 0; i < static_cast<int32_t>(T::Count); i++)
+				if (strcmp(src.c_str(), rep[i]) == 0)
+					value = static_cast<T>(i);
+			return true;
+		}
 
 		// Writing
 		void Add(std::string_view key, std::string_view value);
@@ -36,6 +54,13 @@ namespace Property
 		std::vector<KeyValue> mRanges;
 		// NOTE: This is used for writing (until I find a better solution)
 		std::vector<RangeMarkup> mRangeMarkups;
+
+		// NOTE: Using char array instead of std::string for this because
+		//       this may be changed constantly and std::string isn't very
+		//       optimized for that (and also makes it easier to format and
+		//       erase scope paths)
+		char mScope[0x80] = { '\0' };
+		std::vector<int32_t> mScopeStepStack;
 
 		size_t mPosition = 0;
 		inline std::string_view GetNextLine()
