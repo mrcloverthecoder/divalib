@@ -156,6 +156,7 @@
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\diva_archive.h" />
     <ClInclude Include="src\diva_auth2d.h" />
+    <ClInclude Include="src\diva_auth3d.h" />
     <ClInclude Include="src\diva_db.h" />
     <ClInclude Include="src\diva_prop.h" />
     <ClInclude Include="src\pch.h" />
@@ -165,6 +166,7 @@
   <ItemGroup>
     <ClCompile Include="src\diva_archive.cpp" />
     <ClCompile Include="src\diva_auth2d.cpp" />
+    <ClCompile Include="src\diva_auth3d.cpp" />
     <ClCompile Include="src\diva_db.cpp" />
     <ClCompile Include="src\core_io.cpp" />
     <ClCompile Include="src\diva_prop.cpp" />
