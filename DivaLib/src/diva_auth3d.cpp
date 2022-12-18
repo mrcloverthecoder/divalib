@@ -108,28 +108,68 @@ namespace Auth
 		}
 		prop.CloseScope();
 	}
+
+	static void WriteHrcNode(Property::CanonicalProperties& prop, const HrcNode& hrc)
+	{
+		prop.Add("name", hrc.Name);
+		prop.Add("parent", hrc.Parent);
+		WriteProperty3D("trans", prop, hrc.Translation);
+		WriteProperty3D("rot", prop, hrc.Rotation);
+		WriteProperty3D("scale", prop, hrc.Scale);
+		WriteProperty1D("visibility", prop, hrc.Visibility);
+	}
+
+	static void WriteObjectHrc(Property::CanonicalProperties& prop, const ObjectHrc& hrc)
+	{
+		char buffer[0x40] = { '\0' };
+
+		prop.Add("name", hrc.Name);
+		prop.Add("uid_name", hrc.UIDName);
+		prop.Add("shadow", hrc.Shadow);
+
+		prop.Add("node.length", static_cast<int32_t>(hrc.Nodes.size()));
+		for (size_t i = 0; i < hrc.Nodes.size(); i++)
+		{
+			sprintf_s(buffer, 0x40, "node.%d", static_cast<int32_t>(i));
+			prop.OpenScope(buffer);
+			WriteHrcNode(prop, hrc.Nodes[i]);
+			prop.CloseScope();
+		}
+	}
 }
 
 bool Auth3D::Write(IO::Writer& writer)
 {
-	const int32_t bufferSize = 0x100;
+	constexpr int32_t bufferSize = 0x100;
 	char buffer[bufferSize] = { '\0' };
 
 	Property::CanonicalProperties prop;
 	
 	prop.Add("play_control.begin", PlayControl.Begin);
 	prop.Add("play_control.fps", PlayControl.Framerate);
-	prop.Add("play_control.size", PlayControl.Size);
+	prop.Add("play_control.size", PlayControl.Size > 0.0f ? PlayControl.Size : GetMaxFrame());
 	prop.Add("_.converter.version", ConverterVersion);
 	prop.Add("_.property.version", PropertyVersion);
 	prop.Add("_.file_name", Filename);
 	
-	prop.Add("camera_root.length", static_cast<int32_t>(Cameras.size()));
-	for (size_t i = 0; i < Cameras.size(); i++)
+	if (Cameras.size() > 0)
 	{
-		sprintf_s(buffer, bufferSize, "camera_root.%d", static_cast<int32_t>(i));
+		prop.Add("camera_root.length", static_cast<int32_t>(Cameras.size()));
+		for (size_t i = 0; i < Cameras.size(); i++)
+		{
+			sprintf_s(buffer, bufferSize, "camera_root.%d", static_cast<int32_t>(i));
+			prop.OpenScope(buffer);
+			Auth::WriteCameraRoot(prop, Cameras[i]);
+			prop.CloseScope();
+		}
+	}
+
+	prop.Add("objhrc.length", static_cast<int32_t>(ObjectHrcs.size()));
+	for (size_t i = 0; i < ObjectHrcs.size(); i++)
+	{
+		sprintf_s(buffer, bufferSize, "objhrc.%d", static_cast<int32_t>(i));
 		prop.OpenScope(buffer);
-		Auth::WriteCameraRoot(prop, Cameras[i]);
+		Auth::WriteObjectHrc(prop, ObjectHrcs[i]);
 		prop.CloseScope();
 	}
 

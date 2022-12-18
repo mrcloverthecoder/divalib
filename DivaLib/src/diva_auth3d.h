@@ -82,9 +82,22 @@ namespace Auth
 		} Interest;
 	};
 
+	struct HrcNode
+	{
+		std::string Name = "NO_NAME";
+		int32_t Parent = -1;
+		Property3D Translation;
+		Property3D Rotation;
+		Property3D Scale = SCALE_DEFAULT;
+		Property1D Visibility = { 1, 1.0f };
+	};
+
 	struct ObjectHrc
 	{
-
+		std::string Name = "NO_NAME";
+		std::string UIDName = "NO_UID";
+		int32_t Shadow = 0;
+		std::vector<HrcNode> Nodes;
 	};
 
 	class Auth3D
