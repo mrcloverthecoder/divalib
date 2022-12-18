@@ -82,6 +82,11 @@ namespace Auth
 		} Interest;
 	};
 
+	struct ObjectHrc
+	{
+
+	};
+
 	class Auth3D
 	{
 	public:
@@ -90,6 +95,7 @@ namespace Auth
 		std::string Filename = "file.a3da";
 
 		std::vector<CameraRoot> Cameras;
+		std::vector<ObjectHrc> ObjectHrcs;
 		struct
 		{
 			float Begin = 0.0f;

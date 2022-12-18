@@ -3,7 +3,7 @@
 
 using namespace Auth;
 
-constexpr static char Signature[] = "#A3DA__________\n# date time was eliminated.\n";
+const static char Signature[] = "#A3DA__________\n# date time was eliminated.\n";
 
 namespace Auth
 {
@@ -112,7 +112,7 @@ namespace Auth
 
 bool Auth3D::Write(IO::Writer& writer)
 {
-	constexpr int32_t bufferSize = 0x100;
+	const int32_t bufferSize = 0x100;
 	char buffer[bufferSize] = { '\0' };
 
 	Property::CanonicalProperties prop;
