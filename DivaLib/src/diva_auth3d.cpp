@@ -164,13 +164,16 @@ bool Auth3D::Write(IO::Writer& writer)
 		}
 	}
 
-	prop.Add("objhrc.length", static_cast<int32_t>(ObjectHrcs.size()));
-	for (size_t i = 0; i < ObjectHrcs.size(); i++)
+	if (ObjectHrcs.size() > 0)
 	{
-		sprintf_s(buffer, bufferSize, "objhrc.%d", static_cast<int32_t>(i));
-		prop.OpenScope(buffer);
-		Auth::WriteObjectHrc(prop, ObjectHrcs[i]);
-		prop.CloseScope();
+		prop.Add("objhrc.length", static_cast<int32_t>(ObjectHrcs.size()));
+		for (size_t i = 0; i < ObjectHrcs.size(); i++)
+		{
+			sprintf_s(buffer, bufferSize, "objhrc.%d", static_cast<int32_t>(i));
+			prop.OpenScope(buffer);
+			Auth::WriteObjectHrc(prop, ObjectHrcs[i]);
+			prop.CloseScope();
+		}
 	}
 
 	writer.Write(Signature, 44);

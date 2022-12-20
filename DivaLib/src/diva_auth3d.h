@@ -131,6 +131,22 @@ namespace Auth
 				if (fovMax > max) max = fovMax;
 			}
 
+			for (const ObjectHrc& hrc : ObjectHrcs)
+			{
+				for (const HrcNode& node : hrc.Nodes)
+				{
+					float transMax = node.Translation.GetMaxFrame();
+					float rotMax = node.Rotation.GetMaxFrame();
+					float scaleMax = node.Scale.GetMaxFrame();
+					float visMax = node.Visibility.Max;
+
+					if (transMax > max) max = transMax;
+					if (rotMax > max) max = rotMax;
+					if (scaleMax > max) max = scaleMax;
+					if (visMax > max) max = visMax;
+				}
+			}
+
 			return max;
 		}
 
