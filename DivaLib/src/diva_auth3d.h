@@ -100,6 +100,16 @@ namespace Auth
 		std::vector<HrcNode> Nodes;
 	};
 
+	struct Object
+	{
+		std::string Name = "NO_NAME";
+		std::string UIDName = "NO_UID";
+		Property3D Translation;
+		Property3D Rotation;
+		Property3D Scale = SCALE_DEFAULT;
+		Property1D Visibility = { 1, 1.0f };
+	};
+
 	class Auth3D
 	{
 	public:
@@ -109,6 +119,8 @@ namespace Auth
 
 		std::vector<CameraRoot> Cameras;
 		std::vector<ObjectHrc> ObjectHrcs;
+		std::vector<Object> Objects;
+		std::vector<std::string> ObjectList;
 		struct
 		{
 			float Begin = 0.0f;
@@ -145,6 +157,19 @@ namespace Auth
 					if (scaleMax > max) max = scaleMax;
 					if (visMax > max) max = visMax;
 				}
+			}
+
+			for (const Object& obj : Objects)
+			{
+				float transMax = obj.Translation.GetMaxFrame();
+				float rotMax = obj.Rotation.GetMaxFrame();
+				float scaleMax = obj.Scale.GetMaxFrame();
+				float visMax = obj.Visibility.Max;
+
+				if (transMax > max) max = transMax;
+				if (rotMax > max) max = rotMax;
+				if (scaleMax > max) max = scaleMax;
+				if (visMax > max) max = visMax;
 			}
 
 			return max;

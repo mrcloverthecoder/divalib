@@ -136,6 +136,16 @@ namespace Auth
 			prop.CloseScope();
 		}
 	}
+
+	static void WriteObject(Property::CanonicalProperties& prop, const Object& obj)
+	{
+		prop.Add("name", obj.Name);
+		prop.Add("uid_name", obj.UIDName);
+		WriteProperty3D("trans", prop, obj.Translation);
+		WriteProperty3D("rot", prop, obj.Rotation);
+		WriteProperty3D("scale", prop, obj.Scale);
+		WriteProperty1D("visibility", prop, obj.Visibility);
+	}
 }
 
 bool Auth3D::Write(IO::Writer& writer)
@@ -174,6 +184,22 @@ bool Auth3D::Write(IO::Writer& writer)
 			Auth::WriteObjectHrc(prop, ObjectHrcs[i]);
 			prop.CloseScope();
 		}
+	}
+
+	prop.Add("object.length", static_cast<int32_t>(Objects.size()));
+	prop.Add("object_list.length", static_cast<int32_t>(ObjectList.size()));
+	for (size_t i = 0; i < Objects.size(); i++)
+	{
+		sprintf_s(buffer, bufferSize, "object.%d", static_cast<int32_t>(i));
+		prop.OpenScope(buffer);
+		Auth::WriteObject(prop, Objects[i]);
+		prop.CloseScope();
+	}
+
+	for (size_t i = 0; i < ObjectList.size(); i++)
+	{
+		sprintf_s(buffer, bufferSize, "object_list.%d", static_cast<int32_t>(i));
+		prop.Add(buffer, ObjectList[i]);
 	}
 
 	writer.Write(Signature, 44);
