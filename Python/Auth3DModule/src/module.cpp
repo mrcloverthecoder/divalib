@@ -34,6 +34,8 @@ static std::string Narrow(PyObject* str)
 struct AuthClassObject
 {
 	PyObject_HEAD
+	PyObject* Objects;
+	PyObject* ObjectNameList;
 	PyObject* ObjectHrcList;
 };
 
@@ -67,11 +69,19 @@ struct HrcNodeClassObject
 	PyObject *Trans, *Rot, *Scale, *Visibility;
 };
 
+struct ObjectClassObject
+{
+	PyObject_HEAD
+	PyObject *Name, *UIDName;
+	PyObject *Trans, *Rot, *Scale, *Visibility;
+};
+
 static PyTypeObject AuthClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
 static PyTypeObject ObjhrcClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
 static PyTypeObject Property1DClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
 static PyTypeObject Property3DClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
 static PyTypeObject HrcNodeClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
+static PyTypeObject ObjectClassType = { PyVarObject_HEAD_INIT(NULL, 0) };
 
 // TYPE FUNCTIONS
 static PyObject* Auth3d_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -82,6 +92,8 @@ static PyObject* Auth3d_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		return nullptr;
 
 	self->ObjectHrcList = PyList_New(0);
+	self->Objects = PyList_New(0);
+	self->ObjectNameList = PyList_New(0);
 
 	return (PyObject*)self;
 }
@@ -122,6 +134,20 @@ static PyObject* Property3d_new(PyTypeObject* type, PyObject* args, PyObject* kw
 	return (PyObject*)self;
 }
 
+static void InitScaleVisibilityObject(PyObject* scl, PyObject* vis)
+{
+	auto* scale = (Property3DClassObject*)scl;
+	auto* visibility = (Property1DClassObject*)vis;
+	((Property1DClassObject*)scale->X)->Type = Auth::KEY_TYPE_STATIC;
+	((Property1DClassObject*)scale->X)->Value = 1.0f;
+	((Property1DClassObject*)scale->Y)->Type = Auth::KEY_TYPE_STATIC;
+	((Property1DClassObject*)scale->Y)->Value = 1.0f;
+	((Property1DClassObject*)scale->Z)->Type = Auth::KEY_TYPE_STATIC;
+	((Property1DClassObject*)scale->Z)->Value = 1.0f;
+	visibility->Type = Auth::KEY_TYPE_STATIC;
+	visibility->Value = 1.0f;
+}
+
 static PyObject* HrcNode_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
 	HrcNodeClassObject* self;
@@ -137,16 +163,27 @@ static PyObject* HrcNode_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 	self->Visibility = PyObject_CallObject((PyObject*)&Property1DClassType, nullptr);
 
 	// NOTE: Set scale and visibility to 1 by default
-	auto* scale = (Property3DClassObject*)self->Scale;
-	auto* visibility = (Property1DClassObject*)self->Visibility;
-	((Property1DClassObject*)scale->X)->Type = Auth::KEY_TYPE_STATIC;
-	((Property1DClassObject*)scale->X)->Value = 1.0f;
-	((Property1DClassObject*)scale->Y)->Type = Auth::KEY_TYPE_STATIC;
-	((Property1DClassObject*)scale->Y)->Value = 1.0f;
-	((Property1DClassObject*)scale->Z)->Type = Auth::KEY_TYPE_STATIC;
-	((Property1DClassObject*)scale->Z)->Value = 1.0f;
-	visibility->Type = Auth::KEY_TYPE_STATIC;
-	visibility->Value = 1.0f;
+	InitScaleVisibilityObject(self->Scale, self->Visibility);
+
+	return (PyObject*)self;
+}
+
+static PyObject* Object_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+	ObjectClassObject* self;
+	self = (ObjectClassObject*)type->tp_alloc(type, 0);
+	if (self == nullptr)
+		return nullptr;
+
+	PYSTR_INIT(self, Name, "NO_NAME");
+	PYSTR_INIT(self, UIDName, "NO_UID");
+	self->Trans = PyObject_CallObject((PyObject*)&Property3DClassType, nullptr);
+	self->Rot = PyObject_CallObject((PyObject*)&Property3DClassType, nullptr);
+	self->Scale = PyObject_CallObject((PyObject*)&Property3DClassType, nullptr);
+	self->Visibility = PyObject_CallObject((PyObject*)&Property1DClassType, nullptr);
+
+	// NOTE: Set scale and visibility to 1 by default
+	InitScaleVisibilityObject(self->Scale, self->Visibility);
 
 	return (PyObject*)self;
 }
@@ -158,7 +195,9 @@ static void Auth3d_dealloc(AuthClassObject* self)
 
 // TYPE MEMBERS
 static PyMemberDef Auth3d_members[] = {
-	{ "objhrc_list", T_OBJECT, offsetof(AuthClassObject, ObjectHrcList), 0, "number" },
+	{ "objhrc_list", T_OBJECT, offsetof(AuthClassObject, ObjectHrcList), 0, "List of objhrc." },
+	{ "object_list", T_OBJECT, offsetof(AuthClassObject, Objects), 0, "List of object." },
+	{ "object_name_list", T_OBJECT, offsetof(AuthClassObject, ObjectNameList), 0, "List of object names." },
 	{ nullptr }
 };
 
@@ -176,6 +215,16 @@ static PyMemberDef HrcNode_members[] = {
 	{ "rot", T_OBJECT, offsetof(HrcNodeClassObject, Rot), 0, "Rotation of the node." },
 	{ "scale", T_OBJECT, offsetof(HrcNodeClassObject, Scale), 0, "Scale of the node." },
 	{ "visibility", T_OBJECT, offsetof(HrcNodeClassObject, Visibility), 0, "Visibility of the node." },
+	{ nullptr }
+};
+
+static PyMemberDef Object_members[] = {
+	{ "name", T_OBJECT, offsetof(ObjectClassObject, Name), 0, "Name of the object." },
+	{ "uid_name", T_OBJECT, offsetof(ObjectClassObject, UIDName), 0, "UID of the object." },
+	{ "trans", T_OBJECT, offsetof(ObjectClassObject, Trans), 0, "Traslation of the object." },
+	{ "rot", T_OBJECT, offsetof(ObjectClassObject, Rot), 0, "Rotation of the object." },
+	{ "scale", T_OBJECT, offsetof(ObjectClassObject, Scale), 0, "Scale of the object." },
+	{ "visibility", T_OBJECT, offsetof(ObjectClassObject, Visibility), 0, "Visibility of the object." },
 	{ nullptr }
 };
 
@@ -197,11 +246,16 @@ static void ConvertProperty1D(Property1DClassObject* src, Auth::Property1D& dst)
 {
 	dst.Type = src->Type;
 	dst.Value = src->Value;
+	// NOTE: Allocate space for the keyframes
+	size_t frameCount = (size_t)PyList_Size(src->Keys);
+	dst.Keys.reserve(frameCount);
 
 	for (Py_ssize_t i = 0; i < PyList_Size(src->Keys); i++)
 	{
 		auto* key = PyList_GetItem(src->Keys, i);
 		Py_ssize_t keyListSize = PyList_Size(key);
+		if (keyListSize < 5)
+			continue;
 
 		dst.AddKey(
 			PyLong_AsLong(PyList_GetItem(key, 0)),
@@ -252,6 +306,22 @@ static PyObject* AuthClassType_Write(AuthClassObject* self, PyObject* args)
 			ConvertProperty1D((Property1DClassObject*)srcNode->Visibility, node.Visibility);
 		}
 	}
+
+	for (Py_ssize_t i = 0; i < PyList_Size(self->Objects); i++)
+	{
+		auto* src = (ObjectClassObject*)PyList_GetItem(self->Objects, i);
+		auto& obj = a3d.Objects.emplace_back();
+
+		obj.Name = Narrow(src->Name);
+		obj.UIDName = Narrow(src->UIDName);
+		ConvertProperty3D((Property3DClassObject*)src->Trans, obj.Translation);
+		ConvertProperty3D((Property3DClassObject*)src->Rot, obj.Rotation);
+		ConvertProperty3D((Property3DClassObject*)src->Scale, obj.Scale);
+		ConvertProperty1D((Property1DClassObject*)src->Visibility, obj.Visibility);
+	}
+
+	for (Py_ssize_t i = 0; i < PyList_Size(self->ObjectNameList); i++)
+		a3d.ObjectList.push_back(Narrow(PyList_GetItem(self->ObjectNameList, i)));
 
 	IO::Writer w;
 	a3d.Write(w);
@@ -306,9 +376,17 @@ static bool PreInitTypeObjects()
 	HrcNodeClassType.tp_new = HrcNode_new;
 	HrcNodeClassType.tp_members = HrcNode_members;
 
+	ObjectClassType.tp_name = "auth3d.Object";
+	ObjectClassType.tp_basicsize = sizeof(ObjectClassObject);
+	ObjectClassType.tp_itemsize = 0;
+	ObjectClassType.tp_flags = Py_TPFLAGS_DEFAULT;
+	ObjectClassType.tp_new = Object_new;
+	ObjectClassType.tp_members = Object_members;
+
 	if (PyType_Ready(&AuthClassType) < 0) return false;
 	if (PyType_Ready(&ObjhrcClassType) < 0) return false;
 	if (PyType_Ready(&HrcNodeClassType) < 0) return false;
+	if (PyType_Ready(&ObjectClassType) < 0) return false;
 	if (PyType_Ready(&Property3DClassType) < 0) return false;
 	if (PyType_Ready(&Property1DClassType) < 0) return false;
 
@@ -332,6 +410,7 @@ static bool PostInitTypeObjects(PyObject* mod)
 	if (!RegisterTypeObject(mod, "Auth3d", &AuthClassType)) return false;
 	if (!RegisterTypeObject(mod, "ObjectHrc", &ObjhrcClassType)) return false;
 	if (!RegisterTypeObject(mod, "HrcNode", &HrcNodeClassType)) return false;
+	if (!RegisterTypeObject(mod, "Object", &ObjectClassType)) return false;
 	if (!RegisterTypeObject(mod, "Property3d", &Property3DClassType)) return false;
 	if (!RegisterTypeObject(mod, "Property1d", &Property1DClassType)) return false;
 
