@@ -47,10 +47,17 @@ namespace Property
 			Add(key, buffer);
 		}
 
+		inline void Add(std::string_view key, size_t value)
+		{
+			char buffer[0x20] = { '\0' };
+			sprintf_s(buffer, 0x20, "%zu", value);
+			Add(key, buffer);
+		}
+
 		inline void Add(std::string_view key, float value)
 		{
 			char buffer[0x20] = { '\0' };
-			sprintf_s(buffer, 0x20, "%f", value);
+			sprintf_s(buffer, 0x20, "%g", value);
 			Add(key, buffer);
 		}
 

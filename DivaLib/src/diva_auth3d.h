@@ -110,15 +110,24 @@ namespace Auth
 		Property1D Visibility = { 1, 1.0f };
 	};
 
+	enum class CompressF16
+	{
+		No = 0,     // No compression
+		Normal = 1, // UInt16 Frame and Float16 Value
+		Compact = 2 // Float16 Tangent1 and Float16 Tangent2
+	};
+
 	class Auth3D
 	{
 	public:
 		int32_t ConverterVersion = 20220912;
 		int32_t PropertyVersion = 20050706;
 		std::string Filename = "file.a3da";
+		Auth::CompressF16 CompressF16 = Auth::CompressF16::No;
 
 		std::vector<CameraRoot> Cameras;
 		std::vector<ObjectHrc> ObjectHrcs;
+		std::vector<std::string> ObjectHrcList;
 		std::vector<Object> Objects;
 		std::vector<std::string> ObjectList;
 		struct
@@ -176,5 +185,6 @@ namespace Auth
 		}
 
 		bool Write(IO::Writer& writer);
+		bool WriteCompressed(IO::Writer& destination);
 	};
 }

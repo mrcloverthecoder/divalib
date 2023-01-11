@@ -161,6 +161,7 @@
     <ClInclude Include="src\diva_auth3d.h" />
     <ClInclude Include="src\diva_db.h" />
     <ClInclude Include="src\diva_prop.h" />
+    <ClInclude Include="src\half.h" />
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\core_io.h" />
     <ClInclude Include="src\util_string.h" />
@@ -172,6 +173,7 @@
     <ClCompile Include="src\diva_db.cpp" />
     <ClCompile Include="src\core_io.cpp" />
     <ClCompile Include="src\diva_prop.cpp" />
+    <ClCompile Include="src\half.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

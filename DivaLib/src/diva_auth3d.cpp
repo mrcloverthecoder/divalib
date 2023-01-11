@@ -37,7 +37,7 @@ namespace Auth
 		for (int32_t i = 0; i < keyLength; i++)
 		{
 			const auto& key = data.Keys[i];
-			
+
 			sprintf_s(buffer, bufferSize, "key.%d", i);
 			// key.%d
 			prop.OpenScope(buffer);
@@ -146,6 +146,36 @@ namespace Auth
 		WriteProperty3D("scale", prop, obj.Scale);
 		WriteProperty1D("visibility", prop, obj.Visibility);
 	}
+
+	template <typename T>
+	static void WriteList(Property::CanonicalProperties& prop, std::string_view name, std::vector<T>& data)
+	{
+		if (data.size() < 1)
+			return;
+
+		char buffer[0x40] = { '\0' };
+		sprintf_s(buffer, 0x40, "%s.length", name.data());
+
+		prop.Add(buffer, data.size());
+		for (size_t i = 0; i < data.size(); i++)
+		{
+			sprintf_s(buffer, 0x40, "%s.%zu", name.data(), i);
+			prop.Add(buffer, data[i]);
+		}
+	}
+
+	static void WriteInfoAndPlayControl(Property::CanonicalProperties& prop, Auth3D& auth)
+	{
+		if (auth.CompressF16 != Auth::CompressF16::No)
+			prop.Add("_.compress_f16", static_cast<int32_t>(auth.CompressF16));
+		prop.Add("_.converter.version", auth.ConverterVersion);
+		prop.Add("_.property.version", auth.PropertyVersion);
+		prop.Add("_.file_name", auth.Filename);
+
+		prop.Add("play_control.begin", auth.PlayControl.Begin);
+		prop.Add("play_control.fps", auth.PlayControl.Framerate);
+		prop.Add("play_control.size", auth.PlayControl.Size > 0.0f ? auth.PlayControl.Size : auth.GetMaxFrame());
+	}
 }
 
 bool Auth3D::Write(IO::Writer& writer)
@@ -154,13 +184,7 @@ bool Auth3D::Write(IO::Writer& writer)
 	char buffer[bufferSize] = { '\0' };
 
 	Property::CanonicalProperties prop;
-	
-	prop.Add("play_control.begin", PlayControl.Begin);
-	prop.Add("play_control.fps", PlayControl.Framerate);
-	prop.Add("play_control.size", PlayControl.Size > 0.0f ? PlayControl.Size : GetMaxFrame());
-	prop.Add("_.converter.version", ConverterVersion);
-	prop.Add("_.property.version", PropertyVersion);
-	prop.Add("_.file_name", Filename);
+	Auth::WriteInfoAndPlayControl(prop, *this);
 	
 	if (Cameras.size() > 0)
 	{
@@ -204,5 +228,154 @@ bool Auth3D::Write(IO::Writer& writer)
 
 	writer.Write(Signature, 44);
 	prop.Write(writer);
+	return true;
+}
+
+namespace AuthCompressed
+{
+	void WriteProperty1D(IO::Writer& bin, Auth::Property1D& prop, Auth::CompressF16 compress)
+	{
+		bin.ScheduleWriteOffset([&prop, compress](IO::Writer& bin)
+		{
+			switch (prop.Type)
+			{
+			case Auth::KEY_TYPE_NONE:
+				bin.WriteInt32(0);
+				bin.WriteInt32(0);
+				return;
+			case Auth::KEY_TYPE_STATIC:
+				bin.WriteInt32(0x01);
+				bin.WriteFloat32(prop.Value);
+				return;
+			default:
+				bin.WriteChar(static_cast<char>(prop.Type));
+				bin.WriteChar(0); // Pre/Post-Infinity type bitmask (0~3 - Pre, 4~7 - Post)
+				bin.WriteChar(0);
+				bin.WriteChar(0);
+				bin.WriteInt32(0);
+				bin.WriteFloat32(prop.Max);
+				bin.WriteInt32(static_cast<int32_t>(prop.Keys.size()));
+				break;
+			}
+
+			for (size_t i = 0; i < prop.Keys.size(); i++)
+			{
+				auto& key = prop.Keys[i];
+
+				switch (compress)
+				{
+				case Auth::CompressF16::No:
+					bin.WriteFloat32(key.Frame);
+					bin.WriteFloat32(key.Value);
+					bin.WriteFloat32(key.T1);
+					bin.WriteFloat32(key.T2);
+					break;
+				case Auth::CompressF16::Normal:
+					bin.WriteUInt16(static_cast<uint16_t>(key.Frame));
+					bin.WriteFloat16(key.Value);
+					bin.WriteFloat32(key.T1);
+					bin.WriteFloat32(key.T2);
+					break;
+				case Auth::CompressF16::Compact:
+					bin.WriteUInt16(static_cast<uint16_t>(key.Frame));
+					bin.WriteFloat16(key.Value);
+					bin.WriteFloat16(key.T1);
+					bin.WriteFloat16(key.T2);
+					break;
+				}
+			}
+		});
+	}
+
+	void WriteProperty3D(IO::Writer& bin, Auth::Property3D& prop, Auth::CompressF16 compression)
+	{
+		WriteProperty1D(bin, prop.X, compression);
+		WriteProperty1D(bin, prop.Y, compression);
+		WriteProperty1D(bin, prop.Z, compression);
+	}
+
+	void WriteModelTransform(IO::Writer& bin, Auth::Property3D& trans, Auth::Property3D& rot, Auth::Property3D& scale, Auth::Property1D& visibility, Auth::CompressF16 compress)
+	{
+		WriteProperty3D(bin, scale, Auth::CompressF16::No);
+		WriteProperty3D(bin, rot, compress);
+		WriteProperty3D(bin, trans, Auth::CompressF16::No);
+		WriteProperty1D(bin, visibility, Auth::CompressF16::No);
+		bin.WriteInt32(0);
+		bin.WriteInt32(0);
+	}
+
+	void WriteHrcNode(Property::CanonicalProperties& prop, IO::Writer& bin, Auth::HrcNode& node, Auth::CompressF16 compress)
+	{
+		prop.Add("name", node.Name);
+		prop.Add("parent", node.Parent);
+		prop.Add("model_transform.bin_offset", bin.GetPosition());
+		WriteModelTransform(bin, node.Translation, node.Rotation, node.Scale, node.Visibility, compress);
+	}
+
+	void WriteObjectHrc(Property::CanonicalProperties& prop, IO::Writer& bin, Auth::ObjectHrc& hrc, Auth::CompressF16 compress)
+	{
+		char buffer[0x40] = { '\0' };
+
+		prop.Add("name", hrc.Name);
+		prop.Add("uid_name", hrc.UIDName);
+		prop.Add("shadow", hrc.Shadow);
+		prop.Add("node.length", hrc.Nodes.size());
+		for (size_t i = 0; i < hrc.Nodes.size(); i++)
+		{
+			auto& node = hrc.Nodes[i];
+			sprintf_s(buffer, 0x40, "node.%zu", i);
+			prop.OpenScope(buffer);
+			WriteHrcNode(prop, bin, node, compress);
+			prop.CloseScope();
+		}
+	}
+}
+
+bool Auth3D::WriteCompressed(IO::Writer& destination)
+{
+	// NOTE: Create text and binary section writers
+	Property::CanonicalProperties prop;
+	IO::Writer binSection;
+
+	// NOTE: Write A3DC data
+	char buffer[0x40] = { '\0' };
+
+	Auth::WriteInfoAndPlayControl(prop, *this);
+
+	prop.Add("objhrc.length", ObjectHrcs.size());
+	for (size_t i = 0; i < ObjectHrcs.size(); i++)
+	{
+		auto& hrc = ObjectHrcs[i];
+		sprintf_s(buffer, 0x40, "objhrc.%zu", i);
+		prop.OpenScope(buffer);
+		AuthCompressed::WriteObjectHrc(prop, binSection, hrc, CompressF16);
+		prop.CloseScope();
+	}
+
+	Auth::WriteList(prop, "objhrc_list", ObjectHrcList);
+
+	// NOTE: Flush A3DC data to destination
+	// NOTE: Write top-most header
+	const char* const signature = "#A3DC__________\n";
+	const uint8_t headerData[] = { 0, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x20, 0, 0x02, 0, 0x10 };
+	destination.Write(signature, 0x10);
+	destination.Write(headerData, 0x10);
+
+	// NOTE: Write second header
+	destination.SetEndianness(IO::Endianness::Big);
+	destination.WriteInt32(0x50000000);
+	destination.ScheduleWriteOffsetAndSize([&prop](IO::Writer& writer) { prop.Write(writer); });
+	destination.ScheduleWrite([](IO::Writer& writer) { writer.Pad(32); });
+	destination.WriteInt32(0x01);
+	destination.WriteInt32(0x424C0000);
+	destination.ScheduleWriteOffsetAndSize([&binSection](IO::Writer& writer)
+	{
+		binSection.FlushScheduledWrites();
+		binSection.CopyTo(writer);
+		writer.Pad(32);
+	});
+	destination.WriteInt32(0x20);
+	destination.FlushScheduledWrites();
+
 	return true;
 }

@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 #include "core.h"
+#include "half.h"
 
 namespace IO
 {
@@ -146,6 +147,8 @@ namespace IO
 		}
 	};
 
+	// NOTE: This is necessary for the schedule functions
+	class MemoryWriter;
 	class MemoryWriter : NonCopyable
 	{
 	public:
@@ -160,11 +163,17 @@ namespace IO
 		~MemoryWriter() = default;
 
 		inline void SetEndianness(Endianness endian) { mEndianness = endian; }
+		inline size_t GetPosition() { return mPosition; }
+		inline void Seek(size_t pos) { mPosition = pos; }
+		inline void SeekEnd(size_t pos) { mPosition = mSize - pos; }
 
 		bool Write(const void* buffer, size_t size);
 		inline void WriteChar(char value) { Write(&value, 1); }
+		inline void WriteInt16(int16_t value) { ShouldSwap() ? WriteI16_B(value) : Write(&value, 2); }
+		inline void WriteUInt16(uint16_t value) { ShouldSwap() ? WriteU16_B(value) : Write(&value, 2); }
 		inline void WriteInt32(int32_t value) { ShouldSwap() ? WriteI32_B(value) : Write(&value, 4); }
 		inline void WriteUInt32(uint32_t value) { ShouldSwap() ? WriteU32_B(value) : Write(&value, 4); }
+		inline void WriteFloat16(float value) { ShouldSwap() ? WriteF16_B(value) : WriteF16_L(value); }
 		inline void WriteFloat32(float value) { ShouldSwap() ? WriteF32_B(value) : Write(&value, 4); }
 		inline void WriteString(std::string_view value)
 		{
@@ -179,12 +188,27 @@ namespace IO
 				WriteChar(padding);
 		}
 
+		void ScheduleWrite(std::function<void(IO::MemoryWriter&)> task);
+		void ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task);
+		void ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task);
+		void FlushScheduledWrites();
+
 		bool Flush(std::string_view path);
+		bool CopyTo(MemoryWriter& destination);
 	private:
+		struct ScheduledWrite
+		{
+			int32_t OffsetPosition = -1;
+			int32_t SizePosition = -1;
+			std::function<void(IO::MemoryWriter&)> Task;
+		};
+
+		std::vector<ScheduledWrite> ScheduledWrites;
 		std::unique_ptr<uint8_t[]> mContent;
 		size_t mSize, mPosition, mCapacity;
 		Endianness mEndianness;
 		const size_t mBufferSize = 256 * 1024; // 256kb
+
 
 		inline bool ShouldSwap() { return mEndianness == Endianness::Big; }
 
@@ -193,6 +217,14 @@ namespace IO
 		inline bool WriteU16_B(uint16_t value) { uint16_t v = Endian::Swap(value); Write(&v, 2); return true; }
 		inline bool WriteI32_B(int32_t value) { int32_t v = Endian::Swap(value); Write(&v, 4); return true; }
 		inline bool WriteU32_B(uint32_t value) { uint32_t v = Endian::Swap(value); Write(&v, 4); return true; }
+		inline bool WriteF16_L(float value) { FLOAT16 v = FLOAT16::ToFloat16(value); Write(&v, 2); return true; }
+		inline bool WriteF16_B(float value)
+		{
+			FLOAT16 v = FLOAT16::ToFloat16(value);
+			uint16_t swapValue = Endian::Swap(*(uint16_t*)&v);
+			Write(&swapValue, 2);
+			return true;
+		}
 		inline bool WriteF32_B(float value) { float v = Endian::Swap(value); Write(&v, 4); return true; }
 
 		inline void ExpandBuffer()
