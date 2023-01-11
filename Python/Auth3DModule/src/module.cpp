@@ -7,24 +7,13 @@
 #define PYSTR_INIT(obj, s, data) obj->s = PyUnicode_FromString(data); \
 								 if (obj->s == nullptr) { Py_DECREF(obj); return nullptr; }
 
-static bool NarrowStringLow(PyObject* str, char* buffer, size_t bufferSize)
-{
-	Py_ssize_t length = PyUnicode_GetLength(str);
-	if (length >= bufferSize)
-		return false;
-
-	for (Py_ssize_t i = 0; i < length; i++)
-		buffer[i] = (char)PyUnicode_ReadChar(str, i);
-
-	return true;
-}
-
 static std::string Narrow(PyObject* str)
 {
-	char buffer[0x200] = { '\0' };
-	if (NarrowStringLow(str, buffer, sizeof(buffer)))
+	Py_ssize_t size;
+	const char* ptr = PyUnicode_AsUTF8AndSize(str, &size);
+	if (ptr != nullptr)
 	{
-		std::string s(buffer);
+		std::string s(ptr);
 		return std::move(s);
 	}
 
@@ -37,6 +26,8 @@ struct AuthClassObject
 	PyObject* Objects;
 	PyObject* ObjectNameList;
 	PyObject* ObjectHrcList;
+	PyObject* ObjectHrcNameList;
+	float Begin, FPS, Size;
 };
 
 struct ObjhrcClassObject
@@ -92,6 +83,7 @@ static PyObject* Auth3d_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 		return nullptr;
 
 	self->ObjectHrcList = PyList_New(0);
+	self->ObjectHrcNameList = PyList_New(0);
 	self->Objects = PyList_New(0);
 	self->ObjectNameList = PyList_New(0);
 
@@ -196,8 +188,12 @@ static void Auth3d_dealloc(AuthClassObject* self)
 // TYPE MEMBERS
 static PyMemberDef Auth3d_members[] = {
 	{ "objhrc_list", T_OBJECT, offsetof(AuthClassObject, ObjectHrcList), 0, "List of objhrc." },
+	{ "objhrc_name_list", T_OBJECT, offsetof(AuthClassObject, ObjectHrcNameList), 0, "List of objhrc names." },
 	{ "object_list", T_OBJECT, offsetof(AuthClassObject, Objects), 0, "List of object." },
 	{ "object_name_list", T_OBJECT, offsetof(AuthClassObject, ObjectNameList), 0, "List of object names." },
+	{ "begin", T_FLOAT, offsetof(AuthClassObject, Begin), 0, "Begin frame" },
+	{ "fps", T_FLOAT, offsetof(AuthClassObject, FPS), 0, "Framerate" },
+	{ "size", T_FLOAT, offsetof(AuthClassObject, Size), 0, "End frame" },
 	{ nullptr }
 };
 
@@ -276,15 +272,30 @@ static void ConvertProperty3D(Property3DClassObject* src, Auth::Property3D& dst)
 
 // TYPE METHODS
 // auth3d.Auth3d (AuthClassType)
+
+enum ExportFormat
+{
+	EXPORT_FORMAT_A3DA = 0,
+	EXPORT_FORMAT_A3DC
+};
+
 static PyObject* AuthClassType_Write(AuthClassObject* self, PyObject* args)
 {
 	char buffer[0x200] = { '\0' };
 	const char* file = "";
-	if (!PyArg_ParseTuple(args, "s", &file))
+	int32_t format = 0;
+	int32_t compress = 0;
+	if (!PyArg_ParseTuple(args, "sii", &file, &format, &compress))
 		return nullptr;
+
+	if (compress < 0 || compress > 2)
+		compress = 0;
 
 	Auth::Auth3D a3d = { };
 	a3d.Filename = IO::Path::GetFilename(file);
+	a3d.PlayControl.Begin = self->Begin;
+	a3d.PlayControl.Framerate = self->FPS;
+	a3d.PlayControl.Size = self->Size;
 
 	for (Py_ssize_t i = 0; i < PyList_Size(self->ObjectHrcList); i++)
 	{
@@ -307,6 +318,9 @@ static PyObject* AuthClassType_Write(AuthClassObject* self, PyObject* args)
 		}
 	}
 
+	for (Py_ssize_t i = 0; i < PyList_Size(self->ObjectHrcNameList); i++)
+		a3d.ObjectHrcList.push_back(Narrow(PyList_GetItem(self->ObjectHrcNameList, i)));
+
 	for (Py_ssize_t i = 0; i < PyList_Size(self->Objects); i++)
 	{
 		auto* src = (ObjectClassObject*)PyList_GetItem(self->Objects, i);
@@ -324,7 +338,17 @@ static PyObject* AuthClassType_Write(AuthClassObject* self, PyObject* args)
 		a3d.ObjectList.push_back(Narrow(PyList_GetItem(self->ObjectNameList, i)));
 
 	IO::Writer w;
-	a3d.Write(w);
+	switch (format)
+	{
+	case EXPORT_FORMAT_A3DA:
+		a3d.Write(w);
+		break;
+	case EXPORT_FORMAT_A3DC:
+		a3d.CompressF16 = static_cast<Auth::CompressF16>(compress);
+		a3d.WriteCompressed(w);
+		break;
+	}
+
 	if (!w.Flush(file))
 		PyErr_SetString(PyExc_FileNotFoundError, "Can't write to this file!");
 
