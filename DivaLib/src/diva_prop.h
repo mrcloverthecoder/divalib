@@ -40,6 +40,27 @@ namespace Property
 
 		// Writing
 		void Add(std::string_view key, std::string_view value);
+		inline void Add(std::string_view key, int32_t value)
+		{
+			char buffer[0x20] = { '\0' };
+			sprintf_s(buffer, 0x20, "%d", value);
+			Add(key, buffer);
+		}
+
+		inline void Add(std::string_view key, size_t value)
+		{
+			char buffer[0x20] = { '\0' };
+			sprintf_s(buffer, 0x20, "%zu", value);
+			Add(key, buffer);
+		}
+
+		inline void Add(std::string_view key, float value)
+		{
+			char buffer[0x20] = { '\0' };
+			sprintf_s(buffer, 0x20, "%g", value);
+			Add(key, buffer);
+		}
+
 		void Write(IO::Writer& writer);
 	private:
 		struct RangeMarkup

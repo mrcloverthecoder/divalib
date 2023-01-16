@@ -143,10 +143,65 @@ bool IO::MemoryWriter::Write(const void* buffer, size_t size)
 		ExpandBuffer();
 
 	memcpy(&mContent[mPosition], buffer, size);
-	mSize += size;
+	if (mPosition + size > mSize)
+		mSize += mPosition + size - mSize;
 	mPosition += size;
 
 	return true;
+}
+
+void IO::MemoryWriter::ScheduleWrite(std::function<void(IO::MemoryWriter&)> task)
+{
+	auto& schedule = ScheduledWrites.emplace_back();
+	schedule.Task = task;
+}
+
+void IO::MemoryWriter::ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task)
+{
+	auto& schedule = ScheduledWrites.emplace_back();
+	schedule.Task = task;
+	schedule.OffsetPosition = GetPosition();
+	WriteUInt32(0);
+}
+
+void IO::MemoryWriter::ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task)
+{
+	auto& schedule = ScheduledWrites.emplace_back();
+	schedule.Task = task;
+	schedule.OffsetPosition = GetPosition();
+	WriteUInt32(0);
+	schedule.SizePosition = GetPosition();
+	WriteUInt32(0);
+}
+
+void IO::MemoryWriter::FlushScheduledWrites()
+{
+	// NOTE: Make sure we're at the end of the file
+	SeekEnd(0);
+
+	for (auto& schedule : ScheduledWrites)
+	{
+		// NOTE: Write data, get offset and size
+		size_t pos = GetPosition();
+		schedule.Task(*this);
+		size_t size = GetPosition() - pos;
+
+		// NOTE: Write offset and size
+		if (schedule.OffsetPosition > -1)
+		{
+			Seek(schedule.OffsetPosition);
+			WriteUInt32(pos);
+		}
+
+		if (schedule.SizePosition > -1)
+		{
+			Seek(schedule.SizePosition);
+			WriteUInt32(size);
+		}
+		
+		// NOTE: Go back to the end of the file
+		SeekEnd(0);
+	}
 }
 
 bool IO::MemoryWriter::Flush(std::string_view path)
@@ -161,4 +216,9 @@ bool IO::MemoryWriter::Flush(std::string_view path)
 	fclose(file);
 
 	return true;
+}
+
+bool IO::MemoryWriter::CopyTo(IO::MemoryWriter& destination)
+{
+	return destination.Write(mContent.get(), mSize);
 }

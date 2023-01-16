@@ -16,6 +16,9 @@
 # Mono auto generated files
 mono_crash.*
 
+# setuptools build results
+build/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

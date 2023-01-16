@@ -130,15 +130,23 @@ bool CanonicalProperties::Read(std::string_view key, float& value) const
 void CanonicalProperties::Add(std::string_view key, std::string_view value)
 {
 	size_t keyOffset = mContent.size();
+	size_t keySize = key.size();
+	if (mScope[0] != '\0')
+	{
+		mContent += mScope;
+		mContent += '.';
+		keySize += strlen(mScope) + 1;
+	}
+
 	mContent += key;
 	size_t valueOffset = mContent.size();
 	mContent += value;
 
 	// Create ranges
-	std::string_view keyView(mContent.data() + keyOffset, key.size());
+	std::string_view keyView(mContent.data() + keyOffset, keySize);
 	std::string_view valueView(mContent.data() + valueOffset, value.size());
 	mRanges.push_back(std::make_pair(keyView, valueView));
-	mRangeMarkups.push_back({ keyOffset, key.size(), valueOffset, value.size() });
+	mRangeMarkups.push_back({ keyOffset, keySize, valueOffset, value.size() });
 	// Rearrange all views
 	Rearrange();
 }
