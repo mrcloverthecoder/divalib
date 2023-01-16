@@ -72,7 +72,7 @@ namespace IO
 
 	namespace File
 	{
-		FileBuffer ReadAllData(std::string_view path);
+		FileBuffer ReadAllData(std::string_view path, bool nullTerminated = false);
 	}
 
 	// WARNING: Do *not* use this with big files (such as whole data archives).

@@ -48,7 +48,7 @@ namespace Helper
 }
 
 // TODO: Make a function to narrow std::string_view to null-terminated std::string
-IO::FileBuffer IO::File::ReadAllData(std::string_view path)
+IO::FileBuffer IO::File::ReadAllData(std::string_view path, bool nullTerminated)
 {
 	// Attempt to open file
 	FILE* handle = nullptr;
@@ -61,11 +61,14 @@ IO::FileBuffer IO::File::ReadAllData(std::string_view path)
 	{
 		// Retrieve file size
 		size_t fileSize = Helper::GetFileSize(handle);
+		size_t size = nullTerminated ? fileSize + 1 : fileSize;
 		// Create buffer
-		buffer.Content = std::make_unique<uint8_t[]>(fileSize);
+		buffer.Content = std::make_unique<uint8_t[]>(size);
 		buffer.Size = fileSize;
 		// Read all file data into the buffer
 		fread(buffer.Content.get(), fileSize, 1, handle);
+		if (nullTerminated)
+			buffer.Content[fileSize] = 0x00;
 		// Close disk file
 		fclose(handle);
 	}
