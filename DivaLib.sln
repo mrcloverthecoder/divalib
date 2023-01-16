@@ -13,10 +13,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{92DB9E96
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EditCamera", "Tools\EditCamera\EditCamera.vcxproj", "{278143F8-25B4-493B-82CD-46D11F9AF79B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Python", "Python", "{0BBCB19C-33A4-4D59-9EE3-238E4637E553}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Auth3DModule", "Python\Auth3DModule\Auth3DModule.vcxproj", "{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -49,14 +45,6 @@ Global
 		{278143F8-25B4-493B-82CD-46D11F9AF79B}.Release|x64.Build.0 = Release|x64
 		{278143F8-25B4-493B-82CD-46D11F9AF79B}.Release|x86.ActiveCfg = Release|Win32
 		{278143F8-25B4-493B-82CD-46D11F9AF79B}.Release|x86.Build.0 = Release|Win32
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Debug|x64.ActiveCfg = Debug|x64
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Debug|x64.Build.0 = Debug|x64
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Debug|x86.ActiveCfg = Debug|Win32
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Debug|x86.Build.0 = Debug|Win32
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Release|x64.ActiveCfg = Release|x64
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Release|x64.Build.0 = Release|x64
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Release|x86.ActiveCfg = Release|Win32
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -64,7 +52,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{48A0CA45-A615-4DA3-BC74-683B5CF67C8B} = {9EFCCF23-18A2-4AD6-A239-8AAEF4568828}
 		{278143F8-25B4-493B-82CD-46D11F9AF79B} = {92DB9E96-AF4F-49F5-9C84-7E4B9040DCA2}
-		{651C68E8-4CAF-41D1-BE1F-A7DE94D8BD8C} = {0BBCB19C-33A4-4D59-9EE3-238E4637E553}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7192FE2F-1432-4DDC-9E7B-14685A62C685}
