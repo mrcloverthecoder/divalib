@@ -33,3 +33,11 @@ int32_t Util::String::Count(std::string_view str, char seek)
 
 	return count;
 }
+
+std::string Util::String::ToLower(std::string_view str)
+{
+	std::string lower;
+	for (const char& c : str)
+		lower += tolower(c);
+	return std::move(lower);
+}
