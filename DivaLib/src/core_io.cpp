@@ -174,6 +174,14 @@ void IO::MemoryWriter::ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryW
 	WriteUInt32(0);
 }
 
+void IO::MemoryWriter::ScheduleWriteStringOffset(std::string& data)
+{
+	auto& schedule = ScheduledStrings.emplace_back();
+	schedule.Data = data;
+	schedule.OffsetPosition = GetPosition();
+	WriteUInt32(0);
+}
+
 void IO::MemoryWriter::FlushScheduledWrites()
 {
 	// NOTE: Make sure we're at the end of the file
@@ -200,6 +208,23 @@ void IO::MemoryWriter::FlushScheduledWrites()
 		}
 		
 		// NOTE: Go back to the end of the file
+		SeekEnd(0);
+	}
+}
+
+void IO::MemoryWriter::FlushScheduledStrings()
+{
+	SeekEnd(0);
+
+	for (auto& schedule : ScheduledStrings)
+	{
+		if (schedule.OffsetPosition < 0)
+			continue;
+
+		size_t pos = GetPosition();
+		WriteString(schedule.Data);
+		Seek(schedule.OffsetPosition);
+		WriteUInt32(pos);
 		SeekEnd(0);
 	}
 }

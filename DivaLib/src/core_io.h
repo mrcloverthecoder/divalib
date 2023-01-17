@@ -191,7 +191,9 @@ namespace IO
 		void ScheduleWrite(std::function<void(IO::MemoryWriter&)> task);
 		void ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task);
 		void ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task);
+		void ScheduleWriteStringOffset(std::string& data);
 		void FlushScheduledWrites();
+		void FlushScheduledStrings();
 
 		bool Flush(std::string_view path);
 		bool CopyTo(MemoryWriter& destination);
@@ -203,7 +205,14 @@ namespace IO
 			std::function<void(IO::MemoryWriter&)> Task;
 		};
 
+		struct ScheduledString
+		{
+			int32_t OffsetPosition = -1;
+			std::string Data;
+		};
+
 		std::vector<ScheduledWrite> ScheduledWrites;
+		std::vector<ScheduledString> ScheduledStrings;
 		std::unique_ptr<uint8_t[]> mContent;
 		size_t mSize, mPosition, mCapacity;
 		Endianness mEndianness;
