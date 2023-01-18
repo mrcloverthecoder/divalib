@@ -30,6 +30,97 @@ std::string IO::Path::GetFilename(std::string_view path)
 	return filename;
 }
 
+struct SegmentInfo
+{
+	size_t Position = 0;
+	size_t Size = 0;
+};
+
+static bool GetSegmentInfo(std::string_view path, std::vector<SegmentInfo>* outSegInfo, size_t* outCount)
+{
+	if (path.empty())
+		return false;
+
+	int32_t count = 1;
+	size_t lastPosition = 0;
+	size_t lastPositionEnd = 0;
+	for (size_t idx = 0; idx < path.size(); idx++)
+	{
+		// NOTE: Check if the character is a path separator and if its not the
+		//       first character in the path (UNIX absolute paths)
+		if (IO::Path::IsPathSeparator(path.at(idx)) && idx > 0)
+		{
+			// NOTE: Check if this isn't the last character in the path and
+			//       then check if the next character isn't a path separator
+			if (idx + 1 < path.size() && !IO::Path::IsPathSeparator(path.at(idx + 1)))
+			{
+				// NOTE: If all these checks are successful, store the
+				//       segment data
+				if (outSegInfo != nullptr)
+					outSegInfo->push_back({ lastPosition, lastPositionEnd - lastPosition + 1 });
+				lastPosition = idx + 1;
+				count++;
+			}
+		}
+
+		if (!IO::Path::IsPathSeparator(path.at(idx)))
+			lastPositionEnd = idx;
+
+		// NOTE: Add the last part of the path to the segments list
+		//       if we've reached the last character in the path
+		if (idx == path.size() - 1)
+			if (outSegInfo != nullptr)
+				outSegInfo->push_back({ lastPosition, lastPositionEnd - lastPosition + 1 });
+	}
+
+	if (outCount != nullptr)
+		*outCount = count;
+	return true;
+}
+
+size_t IO::Path::GetSegmentCount(std::string_view path)
+{
+	size_t count = 0;
+	GetSegmentInfo(path, nullptr, &count);
+	return count;
+}
+
+static std::string GetSegmentRange(std::string_view path, size_t startIndex, size_t endIndex)
+{
+	if (path.empty())
+		return std::string();
+
+	std::vector<SegmentInfo> segsInfo;
+	size_t count = 0;
+	GetSegmentInfo(path, &segsInfo, &count);
+
+	if (startIndex >= count || endIndex >= count)
+		return std::string();
+
+	if (startIndex == endIndex)
+		return std::string(&path[segsInfo[startIndex].Position], segsInfo[startIndex].Size);
+
+	std::string pathRanged;
+	for (size_t idx = startIndex; idx <= endIndex; idx++)
+	{
+		pathRanged += std::string(&path[segsInfo[idx].Position], segsInfo[idx].Size);
+		if (idx < endIndex)
+			pathRanged += "/";
+	}
+
+	return pathRanged;
+}
+
+std::string IO::Path::GetSegment(std::string_view path, int32_t segmentIndex)
+{
+	return GetSegmentRange(path, segmentIndex, segmentIndex);
+}
+
+std::string IO::Path::GetUntilSegment(std::string_view path, int32_t lastSegIndex)
+{
+	return GetSegmentRange(path, 0, lastSegIndex);
+}
+
 namespace Helper
 {
 	static inline size_t GetPosition(FILE* file) { return (size_t)ftell(file); }
@@ -74,6 +165,45 @@ IO::FileBuffer IO::File::ReadAllData(std::string_view path, bool nullTerminated)
 	}
 
 	return buffer;
+}
+
+bool IO::File::Exists(std::string_view path)
+{
+	FILE* handle = nullptr;
+	if (fopen_s(&handle, path.data(), "rb") == 0)
+	{
+		fclose(handle);
+		return true;
+	}
+
+	return false;
+}
+
+bool IO::Directory::Create(std::string_view path)
+{
+	if (path.empty())
+		return false;
+
+	size_t segCount = Path::GetSegmentCount(path);
+	for (size_t i = 0; i < segCount; i++)
+	{
+		std::string curDir = Path::GetUntilSegment(path, i);
+		if (Path::IsDrive(curDir) || Directory::Exists(curDir))
+			continue;
+
+		if (CreateDirectoryA(curDir.c_str(), nullptr) == 0)
+			return false;
+	}
+
+	return true;
+}
+
+bool IO::Directory::Exists(std::string_view path)
+{
+	DWORD attrib = GetFileAttributesA(path.data());
+	if (attrib != INVALID_FILE_ATTRIBUTES)
+		return (attrib & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	return false;
 }
 
 void IO::MemoryReader::FromFile(std::string_view path)

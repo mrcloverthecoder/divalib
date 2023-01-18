@@ -57,6 +57,17 @@ namespace IO
 	namespace Path
 	{
 		std::string GetFilename(std::string_view path);
+		size_t GetSegmentCount(std::string_view path);
+		std::string GetSegment(std::string_view path, int32_t segmentIndex);
+		std::string GetUntilSegment(std::string_view path, int32_t lastSegIndex);
+
+		inline bool IsPathSeparator(const char c) { return (c == '/') || (c == '\\'); }
+		inline bool IsDrive(std::string_view path)
+		{ 
+			return (GetSegmentCount(path) == 1) && 
+				   ((path[0] > 'A' && path[0] < 'Z') || (path[0] > 'a' && path[0] < 'z')) && 
+				   (path[1] == ':');
+		}
 	}
 
 	enum class Endianness
@@ -74,6 +85,13 @@ namespace IO
 	namespace File
 	{
 		FileBuffer ReadAllData(std::string_view path, bool nullTerminated = false);
+		bool Exists(std::string_view path);
+	}
+
+	namespace Directory
+	{
+		bool Create(std::string_view path);
+		bool Exists(std::string_view path);
 	}
 
 	// WARNING: Do *not* use this with big files (such as whole data archives).
