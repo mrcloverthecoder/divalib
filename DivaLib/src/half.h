@@ -33,7 +33,6 @@ typedef short                           INT16;
 typedef int                             INT32;
 typedef float                           FLOAT32;
 typedef double                          FLOAT64;
-typedef bool                            BOOL;
 
 #ifndef CONST
 #define CONST                           const
@@ -104,8 +103,8 @@ public:
     //           not provide any arithmetic operators.
     //
 
-    BOOL      operator == ( CONST FLOAT16 & rhs ) CONST;
-    BOOL      operator != ( CONST FLOAT16 & rhs ) CONST;
+    bool      operator == ( CONST FLOAT16 & rhs ) CONST;
+    bool      operator != ( CONST FLOAT16 & rhs ) CONST;
     FLOAT16 & operator = ( CONST FLOAT16 & rhs );
     FLOAT16 & operator = ( CONST FLOAT32 & rhs );
               operator FLOAT32();

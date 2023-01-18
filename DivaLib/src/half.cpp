@@ -34,12 +34,12 @@ FLOAT16 & FLOAT16::operator = ( CONST FLOAT32 & rhs )
     return (*this);
 }
 
-BOOL FLOAT16::operator == ( CONST FLOAT16 & rhs ) CONST
+bool FLOAT16::operator == ( CONST FLOAT16 & rhs ) CONST
 {
     return m_uiFormat == rhs.m_uiFormat;
 }
 
-BOOL FLOAT16::operator != ( CONST FLOAT16 & rhs ) CONST
+bool FLOAT16::operator != ( CONST FLOAT16 & rhs ) CONST
 {
     return !( (*this) == rhs );
 }
