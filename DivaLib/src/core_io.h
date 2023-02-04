@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <string_view>
+#include <list>
 #include "core.h"
 #include "half.h"
 
@@ -60,6 +61,7 @@ namespace IO
 		size_t GetSegmentCount(std::string_view path);
 		std::string GetSegment(std::string_view path, int32_t segmentIndex);
 		std::string GetUntilSegment(std::string_view path, int32_t lastSegIndex);
+		std::string Combine(std::string_view left, std::string_view right);
 
 		inline bool IsPathSeparator(const char c) { return (c == '/') || (c == '\\'); }
 		inline bool IsDrive(std::string_view path)
@@ -106,7 +108,15 @@ namespace IO
 
 		inline size_t GetPosition() { return mPosition; }
 		inline size_t GetSize() { return mSize; }
+		inline size_t GetRemaining() { return mSize - mPosition; }
 		inline void SetEndianness(Endianness endian) { mEndianness = endian; }
+
+		inline void PushBaseOffset() { BaseOffsets.push_back(mPosition); }
+		inline void PopBaseOffset()
+		{
+			if (BaseOffsets.size() > 0)
+				BaseOffsets.pop_back();
+		}
 
 		// TODO: Add more error handling
 		inline void SeekBegin(size_t pos) { mPosition = pos; }
@@ -134,13 +144,13 @@ namespace IO
 		inline std::string ReadStringOffset()
 		{
 			std::string str;
-			ExecuteAtOffset(ReadUInt32(), [&str, this] { str = ReadString(); });
+			ReadAtOffset(ReadUInt32(), [&str](IO::MemoryReader& reader) { str = reader.ReadString(); });
 			return str;
 		}
-
-		// Execute task at offset
-		void ExecuteAtOffset(uint32_t offset, std::function<void(void)> task);
+		
+		void ReadAtOffset(size_t offset, std::function<void(IO::MemoryReader&)> task, bool useBaseOffset = false);
 	private:
+		std::vector<size_t> BaseOffsets;
 		std::unique_ptr<uint8_t[]> mContent;
 		size_t mSize = 0;
 		size_t mPosition = 0;
@@ -182,11 +192,23 @@ namespace IO
 
 		inline void SetEndianness(Endianness endian) { mEndianness = endian; }
 		inline size_t GetPosition() { return mPosition; }
+		inline size_t GetSize() { return mSize; }
+		inline const void* GetData() { return mContent.get(); }
+
 		inline void Seek(size_t pos) { mPosition = pos; }
 		inline void SeekEnd(size_t pos) { mPosition = mSize - pos; }
 
+		inline void PushBaseOffset() { BaseOffsets.push_back(mPosition); }
+		inline void PopBaseOffset()
+		{
+			if (BaseOffsets.size() > 0)
+				BaseOffsets.pop_back();
+		}
+
 		bool Write(const void* buffer, size_t size);
 		inline void WriteChar(char value) { Write(&value, 1); }
+		inline void WriteInt8(int8_t value) { Write(&value, 1); }
+		inline void WriteUInt8(uint8_t value) { Write(&value, 1); }
 		inline void WriteInt16(int16_t value) { ShouldSwap() ? WriteI16_B(value) : Write(&value, 2); }
 		inline void WriteUInt16(uint16_t value) { ShouldSwap() ? WriteU16_B(value) : Write(&value, 2); }
 		inline void WriteInt32(int32_t value) { ShouldSwap() ? WriteI32_B(value) : Write(&value, 4); }
@@ -207,9 +229,9 @@ namespace IO
 		}
 
 		void ScheduleWrite(std::function<void(IO::MemoryWriter&)> task);
-		void ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task);
-		void ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task);
-		void ScheduleWriteStringOffset(std::string& data);
+		void ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task, size_t baseOffset = 0);
+		void ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task, size_t baseOffset = 0);
+		void ScheduleWriteStringOffset(const std::string_view data, size_t baseOffset = 0);
 		void FlushScheduledWrites();
 		void FlushScheduledStrings();
 
@@ -220,17 +242,20 @@ namespace IO
 		{
 			int32_t OffsetPosition = -1;
 			int32_t SizePosition = -1;
+			size_t BaseOffset = 0;
 			std::function<void(IO::MemoryWriter&)> Task;
 		};
 
 		struct ScheduledString
 		{
 			int32_t OffsetPosition = -1;
+			size_t BaseOffset = 0;
 			std::string Data;
 		};
 
-		std::vector<ScheduledWrite> ScheduledWrites;
-		std::vector<ScheduledString> ScheduledStrings;
+		std::vector<size_t> BaseOffsets;
+		std::list<ScheduledWrite> ScheduledWrites;
+		std::list<ScheduledString> ScheduledStrings;
 		std::unique_ptr<uint8_t[]> mContent;
 		size_t mSize, mPosition, mCapacity;
 		Endianness mEndianness;

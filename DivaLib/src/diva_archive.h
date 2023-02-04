@@ -65,6 +65,6 @@ namespace Archive
 	private:
 		std::vector<FArcFile> mFiles;
 
-		int32_t GetHeaderSize(bool compressed);
+		size_t GetHeaderSize(bool compressed);
 	};
 }

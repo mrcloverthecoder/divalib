@@ -97,8 +97,8 @@ bool FArcPacker::Flush(std::string_view path, bool compress)
 	IO::Writer writer;
 	writer.SetEndianness(IO::Endianness::Big);
 
-	int32_t headerSize = GetHeaderSize(compress);
-	int32_t fileOffset = headerSize + 0x08;
+	size_t headerSize = GetHeaderSize(compress);
+	int32_t fileOffset = IO::Util::Align(headerSize + 0x08, FArcAlignment);
 
 	writer.WriteInt32('FArc');
 	writer.WriteInt32(headerSize);
@@ -130,9 +130,10 @@ bool FArcPacker::Flush(std::string_view path, bool compress)
 	return true;
 }
 
-int32_t FArcPacker::GetHeaderSize(bool compressed)
+size_t FArcPacker::GetHeaderSize(bool compressed)
 {
-	int32_t size = 0x04; // Alignment value
+	// NOTE: Header size includes the alignment value
+	size_t size = 0x04;
 
 	for (const FArcFile& file : mFiles)
 	{

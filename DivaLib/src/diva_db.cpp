@@ -12,7 +12,7 @@ void SpriteDatabase::Parse(IO::Reader& reader)
 
 	SpriteSets.reserve(setCount);
 
-	reader.ExecuteAtOffset(setOffset, [&reader, setCount, this]
+	reader.ReadAtOffset(setOffset, [setCount, this](IO::Reader& reader)
 	{
 		for (size_t i = 0; i < setCount; i++)
 		{
@@ -24,7 +24,7 @@ void SpriteDatabase::Parse(IO::Reader& reader)
 		}
 	});
 
-	reader.ExecuteAtOffset(dataOffset, [&reader, dataCount, this]
+	reader.ReadAtOffset(dataOffset, [dataCount, this](IO::Reader& reader)
 	{
 		for (int i = 0; i < dataCount; i++)
 		{

@@ -29,7 +29,7 @@ namespace Aet
 		if (keyCount < 1 || keyOffset == 0)
 			return;
 
-		reader.ExecuteAtOffset(keyOffset, [&]
+		reader.ReadAtOffset(keyOffset, [&keyCount, &prop](IO::Reader& reader)
 		{
 			if (keyCount == 1)
 				prop.Keyframes.emplace_back(0.0f, reader.ReadFloat32(), 0.0f);
@@ -81,7 +81,7 @@ namespace Aet
 		uint32_t videoOffset = reader.ReadUInt32();
 		uint32_t audioOffset = reader.ReadUInt32();
 
-		reader.ExecuteAtOffset(videoOffset, [&] { ReadLayerVideo(reader, layer.Video); });
+		reader.ReadAtOffset(videoOffset, [&](IO::Reader& reader) { ReadLayerVideo(reader, layer.Video); });
 	}
 
 	static void ReadComposition(IO::Reader& reader, Aet::Composition& comp)
@@ -89,7 +89,7 @@ namespace Aet
 		int32_t layerCount = reader.ReadInt32();
 		uint32_t layerOffset = reader.ReadUInt32();
 
-		reader.ExecuteAtOffset(layerOffset, [&]
+		reader.ReadAtOffset(layerOffset, [&](IO::Reader& reader)
 		{
 			for (int i = 0; i < layerCount; i++)
 			{
@@ -110,7 +110,7 @@ namespace Aet
 		uint32_t srcOffset = reader.ReadUInt32();
 
 		// Read video sources
-		reader.ExecuteAtOffset(srcOffset, [&]
+		reader.ReadAtOffset(srcOffset, [&](IO::Reader& reader)
 		{
 			for (int i = 0; i < srcCount; i++)
 			{
@@ -143,7 +143,7 @@ namespace Aet
 
 		std::vector<Aet::ItemReference> itemReferences;
 
-		reader.ExecuteAtOffset(compOffset, [&]
+		reader.ReadAtOffset(compOffset, [&](IO::Reader& reader)
 		{
 			for (int i = 0; i < compCount; i++)
 			{
@@ -156,7 +156,7 @@ namespace Aet
 			}
 		});
 
-		reader.ExecuteAtOffset(videoOffset, [&]
+		reader.ReadAtOffset(videoOffset, [&](IO::Reader& reader)
 		{
 			for (int i = 0; i < videoCount; i++)
 			{
@@ -179,7 +179,7 @@ void Aet::AetSet::Parse(IO::Reader& reader)
 	uint32_t offset = 0;
 	while (offset = reader.ReadInt32(), offset != 0)
 	{
-		reader.ExecuteAtOffset(offset, [&reader, this]
+		reader.ReadAtOffset(offset, [this](IO::Reader& reader)
 		{
 			Aet::Scene& scene = Scenes.emplace_back();
 			Aet::ReadScene(reader, scene);

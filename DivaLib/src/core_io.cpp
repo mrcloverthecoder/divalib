@@ -121,6 +121,11 @@ std::string IO::Path::GetUntilSegment(std::string_view path, int32_t lastSegInde
 	return GetSegmentRange(path, 0, lastSegIndex);
 }
 
+std::string IO::Path::Combine(std::string_view left, std::string_view right)
+{
+	return std::string(left) + "/" + std::string(right);
+}
+
 namespace Helper
 {
 	static inline size_t GetPosition(FILE* file) { return (size_t)ftell(file); }
@@ -248,17 +253,14 @@ std::string IO::MemoryReader::ReadString()
 	return str;
 }
 
-void IO::MemoryReader::ExecuteAtOffset(uint32_t offset, std::function<void(void)> task)
+void IO::MemoryReader::ReadAtOffset(size_t offset, std::function<void(IO::MemoryReader&)> task, bool useBaseOffset)
 {
-	if (offset == 0)
-		return;
-
 	// Get current position
-	uint32_t pos = GetPosition();
+	size_t pos = GetPosition();
 
 	// Execute work at offset
-	SeekBegin(offset);
-	task();
+	SeekBegin(useBaseOffset && BaseOffsets.size() > 0 ? offset + BaseOffsets.back() : offset);
+	task(*this);
 
 	// Seek back to current position;
 	SeekBegin(pos);
@@ -286,29 +288,32 @@ void IO::MemoryWriter::ScheduleWrite(std::function<void(IO::MemoryWriter&)> task
 	schedule.Task = task;
 }
 
-void IO::MemoryWriter::ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task)
+void IO::MemoryWriter::ScheduleWriteOffset(std::function<void(IO::MemoryWriter&)> task, size_t baseOffset)
 {
 	auto& schedule = ScheduledWrites.emplace_back();
 	schedule.Task = task;
 	schedule.OffsetPosition = GetPosition();
+	schedule.BaseOffset = baseOffset;
 	WriteUInt32(0);
 }
 
-void IO::MemoryWriter::ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task)
+void IO::MemoryWriter::ScheduleWriteOffsetAndSize(std::function<void(IO::MemoryWriter&)> task, size_t baseOffset)
 {
 	auto& schedule = ScheduledWrites.emplace_back();
 	schedule.Task = task;
+	schedule.BaseOffset = baseOffset;
 	schedule.OffsetPosition = GetPosition();
 	WriteUInt32(0);
 	schedule.SizePosition = GetPosition();
 	WriteUInt32(0);
 }
 
-void IO::MemoryWriter::ScheduleWriteStringOffset(std::string& data)
+void IO::MemoryWriter::ScheduleWriteStringOffset(const std::string_view data, size_t baseOffset)
 {
 	auto& schedule = ScheduledStrings.emplace_back();
-	schedule.Data = data;
+	schedule.Data = std::string(data);
 	schedule.OffsetPosition = GetPosition();
+	schedule.BaseOffset = baseOffset;
 	WriteUInt32(0);
 }
 
@@ -317,29 +322,31 @@ void IO::MemoryWriter::FlushScheduledWrites()
 	// NOTE: Make sure we're at the end of the file
 	SeekEnd(0);
 
-	for (auto& schedule : ScheduledWrites)
+	for (const auto& schedule : ScheduledWrites)
 	{
-		// NOTE: Write data, get offset and size
-		size_t pos = GetPosition();
-		schedule.Task(*this);
-		size_t size = GetPosition() - pos;
+		const size_t pos = GetPosition();
+		const size_t offset = pos - schedule.BaseOffset;
 
-		// NOTE: Write offset and size
 		if (schedule.OffsetPosition > -1)
 		{
 			Seek(schedule.OffsetPosition);
-			WriteUInt32(pos);
+			WriteUInt32(static_cast<uint32_t>(offset));
 		}
+
+		Seek(pos);
+		schedule.Task(*this);
 
 		if (schedule.SizePosition > -1)
 		{
+			size_t size = GetPosition() - pos;
 			Seek(schedule.SizePosition);
 			WriteUInt32(size);
 		}
-		
-		// NOTE: Go back to the end of the file
+
 		SeekEnd(0);
 	}
+
+	ScheduledWrites.clear();
 }
 
 void IO::MemoryWriter::FlushScheduledStrings()
@@ -354,9 +361,11 @@ void IO::MemoryWriter::FlushScheduledStrings()
 		size_t pos = GetPosition();
 		WriteString(schedule.Data);
 		Seek(schedule.OffsetPosition);
-		WriteUInt32(pos);
+		WriteUInt32(pos - schedule.BaseOffset);
 		SeekEnd(0);
 	}
+
+	ScheduledStrings.clear();
 }
 
 bool IO::MemoryWriter::Flush(std::string_view path)
